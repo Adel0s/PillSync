@@ -28,7 +28,6 @@ const Login = () => {
         if (error) {
             setError(error.message);
         } else {
-            Alert.alert("Success", "Logged in successfully!");
             router.push("/home");
         }
 
