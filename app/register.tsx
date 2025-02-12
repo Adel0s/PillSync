@@ -18,7 +18,7 @@ const Register = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [dob, setDob] = useState<Date | null>(null); // Default to null
+    const [dob, setDob] = useState<Date | null>(null);
     const [phone, setPhone] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [showDatePicker, setShowDatePicker] = useState(false);
@@ -36,7 +36,10 @@ const Register = () => {
             return;
         }
 
-        const formattedDob = dob.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+        // Format the date using local date methods to avoid timezone issues
+        const formattedDob = `${dob.getFullYear()}-${(dob.getMonth() + 1)
+            .toString()
+            .padStart(2, "0")}-${dob.getDate().toString().padStart(2, "0")}`;
 
         const { error } = await supabase.auth.signUp({
             email,
