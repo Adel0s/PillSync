@@ -1,15 +1,68 @@
-import { Text, View } from "react-native";
+import { View, Text, StyleSheet, Animated } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useEffect, useRef } from "react";
 
-export default function Index() {
+export default function SplashScreen() {
+  const router = useRouter();
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.5)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 10,
+        friction: 2,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    const timer = setTimeout(() => {
+      router.replace("/register");
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <View
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text>Edit app/index.tsx to edit this screen.</Text>
+    <View style={styles.container}>
+      <Animated.View
+        style={[
+          styles.iconContainer,
+          {
+            opacity: fadeAnim,
+            transform: [{ scale: scaleAnim }],
+          },
+        ]}
+      >
+        <Ionicons name="medical" size={100} color="white" />
+        <Text style={styles.appName}>PillSync</Text>
+      </Animated.View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#20A0D8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  iconContainer: {
+    alignItems: "center",
+  },
+  appName: {
+    color: "white",
+    fontSize: 32,
+    fontWeight: "bold",
+    marginTop: 20,
+    letterSpacing: 1,
+  },
+});
