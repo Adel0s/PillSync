@@ -6,6 +6,8 @@ import { useRouter } from "expo-router";
 const Home = () => {
     const [email, setEmail] = useState<string | null>(null);
     const [name, setName] = useState<string | null>(null);
+    const [dob, setDob] = useState<string | null>(null); // Date of Birth state
+    const [phone, setPhone] = useState<string | null>(null); // Phone number state
     const [userId, setUserId] = useState<string | null>(null);
     const router = useRouter();
 
@@ -22,6 +24,8 @@ const Home = () => {
                 if (data?.user) {
                     setEmail(data.user.email ?? null);
                     setName(data.user.user_metadata?.full_name ?? null);
+                    setDob(data.user.user_metadata?.date_of_birth ?? null); // Fetch DOB
+                    setPhone(data.user.user_metadata?.phone_number ?? null); // Fetch phone number
                     setUserId(data.user.id ?? null);
                 }
             } catch (err) {
@@ -51,6 +55,8 @@ const Home = () => {
             <Text style={styles.title}>Welcome to PillSync</Text>
             {name && <Text style={styles.text}>Logged in as: {name}</Text>}
             {email && <Text style={styles.text}>User email: {email}</Text>}
+            {dob && <Text style={styles.text}>Date of Birth: {dob}</Text>}
+            {phone && <Text style={styles.text}>Phone Number: {phone}</Text>}
             {userId && <Text style={styles.text}>User ID: {userId}</Text>}
             <Button title="Sign Out" onPress={handleSignOut} />
         </View>

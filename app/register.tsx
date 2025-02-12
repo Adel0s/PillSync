@@ -11,13 +11,17 @@ import {
     ActivityIndicator,
     TouchableOpacity,
 } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 
 const Register = () => {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [dob, setDob] = useState<Date | null>(null); // Default to null
+    const [phone, setPhone] = useState("");
     const [showPassword, setShowPassword] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -26,11 +30,23 @@ const Register = () => {
         setLoading(true);
         setError(null);
 
+        if (!dob) {
+            setError("Please select your date of birth.");
+            setLoading(false);
+            return;
+        }
+
+        const formattedDob = dob.toISOString().split("T")[0]; // Format: YYYY-MM-DD
+
         const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: { full_name: name },
+                data: {
+                    full_name: name,
+                    date_of_birth: formattedDob,
+                    phone_number: phone,
+                },
             },
         });
 
@@ -48,13 +64,15 @@ const Register = () => {
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Register</Text>
+
             <TextInput
                 style={styles.input}
-                placeholder="Name"
+                placeholder="Full Name"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
             />
+
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -64,6 +82,37 @@ const Register = () => {
                 autoCapitalize="none"
                 autoCorrect={false}
             />
+
+            {/* DATE PICKER FIELD */}
+            <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInput}>
+                <Text style={[styles.dateText, !dob && styles.placeholderText]}>
+                    {dob ? dob.toLocaleDateString() : "Select Date of Birth"}
+                </Text>
+            </TouchableOpacity>
+
+            {showDatePicker && (
+                <DateTimePicker
+                    value={dob || new Date(2000, 0, 1)} // Default picker to Jan 1, 2000
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, selectedDate) => {
+                        setShowDatePicker(false);
+                        if (selectedDate) {
+                            const localDate = new Date(selectedDate); // Adjust date to local timezone
+                            setDob(localDate);
+                        }
+                    }}
+                />
+            )}
+
+            <TextInput
+                style={styles.input}
+                placeholder="Phone Number"
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+            />
+
             <View style={styles.passwordContainer}>
                 <TextInput
                     style={styles.passwordInput}
@@ -76,9 +125,11 @@ const Register = () => {
                     <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="gray" />
                 </TouchableOpacity>
             </View>
+
             {error && <Text style={styles.error}>{error}</Text>}
             <Button title={loading ? "Registering..." : "Register"} onPress={handleRegister} disabled={loading} />
             {loading && <ActivityIndicator size="small" color="#0000ff" />}
+
             <Text style={styles.link}>
                 Already have an account?{" "}
                 <Text onPress={() => router.push("/login")} style={styles.linkText}>
@@ -107,6 +158,22 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         paddingHorizontal: 8,
         borderRadius: 5,
+    },
+    dateInput: {
+        height: 40,
+        borderColor: "gray",
+        borderWidth: 1,
+        marginBottom: 12,
+        paddingHorizontal: 8,
+        borderRadius: 5,
+        justifyContent: "center",
+    },
+    dateText: {
+        fontSize: 16,
+        color: "black",
+    },
+    placeholderText: {
+        color: "gray",
     },
     passwordContainer: {
         flexDirection: "row",

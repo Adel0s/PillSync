@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, Animated } from "react-native";
+import { View, Text, StyleSheet, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
@@ -24,7 +24,11 @@ export default function SplashScreen() {
     ]).start();
 
     const timer = setTimeout(() => {
-      router.replace("/register");
+      if (Platform.OS === "web") {
+        window.location.href = "/register";
+      } else {
+        router.replace("/register");
+      }
     }, 2000);
 
     return () => clearTimeout(timer);
