@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
-import { useRouter } from 'expo-router';
-import { View, Text, TextInput, Button, Alert, StyleSheet, ActivityIndicator } from 'react-native';
+import React, { useState } from "react";
+import { supabase } from "../lib/supabase";
+import { useRouter } from "expo-router";
+import {
+    View,
+    Text,
+    TextInput,
+    Button,
+    Alert,
+    StyleSheet,
+    ActivityIndicator,
+    TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-const Register: React.FC = () => {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+const Register = () => {
+    const [name, setName] = useState("");
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
     const router = useRouter();
@@ -15,24 +26,20 @@ const Register: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: {
-                    full_name: name
-                }
-            }
+                data: { full_name: name },
+            },
         });
 
         if (error) {
             setError(error.message);
-            console.log('Error registering:', error);
-
+            console.log("Error registering:", error);
         } else {
-            Alert.alert('Registration successful!', 'Please check your email to confirm your account.');
-            console.log(error, data);
-            router.push('/home');
+            Alert.alert("Registration successful!", "Please check your email to confirm your account.");
+            router.push("/home");
         }
 
         setLoading(false);
@@ -46,8 +53,7 @@ const Register: React.FC = () => {
                 placeholder="Name"
                 value={name}
                 onChangeText={setName}
-                autoCapitalize="none"
-                autoCorrect={false}
+                autoCapitalize="words"
             />
             <TextInput
                 style={styles.input}
@@ -58,18 +64,26 @@ const Register: React.FC = () => {
                 autoCapitalize="none"
                 autoCorrect={false}
             />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-            />
+            <View style={styles.passwordContainer}>
+                <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
+                    <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="gray" />
+                </TouchableOpacity>
+            </View>
             {error && <Text style={styles.error}>{error}</Text>}
-            <Button title={loading ? 'Registering...' : 'Register'} onPress={handleRegister} disabled={loading} />
+            <Button title={loading ? "Registering..." : "Register"} onPress={handleRegister} disabled={loading} />
             {loading && <ActivityIndicator size="small" color="#0000ff" />}
             <Text style={styles.link}>
-                Already have an account? <Text onPress={() => router.push('/login')} style={styles.linkText}>Login here</Text>
+                Already have an account?{" "}
+                <Text onPress={() => router.push("/login")} style={styles.linkText}>
+                    Login here
+                </Text>
             </Text>
         </View>
     );
@@ -78,32 +92,49 @@ const Register: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: 'center',
+        justifyContent: "center",
         padding: 16,
     },
     title: {
         fontSize: 24,
         marginBottom: 16,
-        textAlign: 'center',
+        textAlign: "center",
     },
     input: {
         height: 40,
-        borderColor: 'gray',
+        borderColor: "gray",
         borderWidth: 1,
         marginBottom: 12,
         paddingHorizontal: 8,
+        borderRadius: 5,
+    },
+    passwordContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        borderWidth: 1,
+        borderColor: "gray",
+        borderRadius: 5,
+        marginBottom: 12,
+        paddingHorizontal: 8,
+    },
+    passwordInput: {
+        flex: 1,
+        height: 40,
+    },
+    icon: {
+        padding: 8,
     },
     error: {
-        color: 'red',
+        color: "red",
         marginBottom: 12,
-        textAlign: 'center',
+        textAlign: "center",
     },
     link: {
         marginTop: 16,
-        textAlign: 'center',
+        textAlign: "center",
     },
     linkText: {
-        color: 'blue',
+        color: "blue",
     },
 });
 
