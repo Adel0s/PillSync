@@ -24,20 +24,34 @@ const Login = () => {
     const handleLogin = async () => {
         setLoading(true);
         const { error } = await supabase.auth.signInWithPassword({ email, password });
-
         if (error) {
             setError(error.message);
         } else {
             router.push("/home");
         }
+        setLoading(false);
+    };
 
+    const handleForgotPassword = async () => {
+        if (!email) {
+            Alert.alert("Forgot Password", "Please enter your email address to reset your password.");
+            return;
+        }
+        setLoading(true);
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: "https://your-app-url.com/reset-password",
+        });
+        if (error) {
+            Alert.alert("Error", error.message);
+        } else {
+            Alert.alert("Success", "Check your email for password reset instructions.");
+        }
         setLoading(false);
     };
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Login</Text>
-
             <TextInput
                 style={styles.input}
                 placeholder="Email"
@@ -60,8 +74,11 @@ const Login = () => {
                 </TouchableOpacity>
             </View>
             {error && <Text style={styles.error}>{error}</Text>}
-            <Button title={loading ? "Logging in..." : "Login"} onPress={handleLogin} disabled={loading} />
+            <Button title={loading ? "Processing..." : "Login"} onPress={handleLogin} disabled={loading} />
             {loading && <ActivityIndicator size="small" color="#0000ff" />}
+            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+            </TouchableOpacity>
             <Text style={styles.link}>
                 Don't have an account?{" "}
                 <Text onPress={() => router.push("/register")} style={styles.linkText}>
@@ -111,6 +128,14 @@ const styles = StyleSheet.create({
         color: "red",
         marginBottom: 12,
         textAlign: "center",
+    },
+    forgotContainer: {
+        marginVertical: 8,
+        alignItems: "center",
+    },
+    forgotText: {
+        color: "blue",
+        textDecorationLine: "underline",
     },
     link: {
         marginTop: 16,
