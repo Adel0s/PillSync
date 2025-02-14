@@ -4,6 +4,17 @@ import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
 
+const calculateAge = (dobString: string) => {
+    const birthDate = new Date(dobString);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+    }
+    return age;
+};
+
 const Profile = () => {
     const [email, setEmail] = useState<string | null>(null);
     const [name, setName] = useState<string | null>(null);
@@ -62,6 +73,7 @@ const Profile = () => {
                 {name && <Text style={styles.text}>Logged in as: {name}</Text>}
                 {email && <Text style={styles.text}>User email: {email}</Text>}
                 {dob && <Text style={styles.text}>Date of Birth: {dob}</Text>}
+                {dob && <Text style={styles.text}>Age: {calculateAge(dob)} years</Text>}
                 {phone && <Text style={styles.text}>Phone Number: {phone}</Text>}
                 {userId && <Text style={styles.text}>User ID: {userId}</Text>}
             </View>
