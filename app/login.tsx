@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import {
     View,
+    Text,
+    TextInput,
+    TouchableOpacity,
     StyleSheet,
     Alert,
-    TextInput,
-    Button,
-    Text,
     ActivityIndicator,
-    TouchableOpacity,
+    ScrollView,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
@@ -50,84 +50,121 @@ const Login = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Login</Text>
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-            />
-            <View style={styles.passwordContainer}>
-                <TextInput
-                    style={styles.passwordInput}
-                    placeholder="Password"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
-                    <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="gray" />
+        <ScrollView contentContainerStyle={styles.scrollContainer}>
+            <View style={styles.container}>
+                <Text style={styles.header}>Login</Text>
+                <View style={styles.card}>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Email"
+                        placeholderTextColor="#999"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                    />
+                    <View style={styles.passwordContainer}>
+                        <TextInput
+                            style={styles.passwordInput}
+                            placeholder="Password"
+                            placeholderTextColor="#999"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry={!showPassword}
+                        />
+                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
+                            <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="gray" />
+                        </TouchableOpacity>
+                    </View>
+                    {error && <Text style={styles.error}>{error}</Text>}
+                    <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+                        <Text style={styles.loginButtonText}>
+                            {loading ? "Logging in..." : "Login"}
+                        </Text>
+                    </TouchableOpacity>
+                    {loading && <ActivityIndicator size="small" color="#0000ff" />}
+                    <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
+                        <Text style={styles.forgotText}>Forgot Password?</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity onPress={() => router.push("/register")}>
+                    <Text style={styles.footerText}>Don't have an account? Sign up here</Text>
                 </TouchableOpacity>
             </View>
-            {error && <Text style={styles.error}>{error}</Text>}
-            <Button title={loading ? "Processing..." : "Login"} onPress={handleLogin} disabled={loading} />
-            {loading && <ActivityIndicator size="small" color="#0000ff" />}
-            <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
-                <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
-            <Text style={styles.link}>
-                Don't have an account?{" "}
-                <Text onPress={() => router.push("/register")} style={styles.linkText}>
-                    Sign up
-                </Text>
-            </Text>
-        </View>
+        </ScrollView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: "center",
+    scrollContainer: {
+        flexGrow: 1,
+        backgroundColor: "#f2f2f2",
         padding: 16,
+        justifyContent: "center",
     },
-    title: {
-        fontSize: 24,
-        marginBottom: 16,
-        textAlign: "center",
+    container: {
+        alignItems: "center",
+    },
+    header: {
+        fontSize: 28,
+        fontWeight: "bold",
+        marginBottom: 24,
+        color: "#333",
+    },
+    card: {
+        width: "100%",
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+        marginBottom: 20,
     },
     input: {
-        height: 40,
-        borderColor: "gray",
+        height: 48,
+        borderColor: "#ddd",
         borderWidth: 1,
-        marginBottom: 12,
-        paddingHorizontal: 8,
-        borderRadius: 5,
+        borderRadius: 8,
+        marginBottom: 16,
+        paddingHorizontal: 12,
+        backgroundColor: "#f9f9f9",
     },
     passwordContainer: {
         flexDirection: "row",
         alignItems: "center",
+        borderColor: "#ddd",
         borderWidth: 1,
-        borderColor: "gray",
-        borderRadius: 5,
-        marginBottom: 12,
-        paddingHorizontal: 8,
+        borderRadius: 8,
+        backgroundColor: "#f9f9f9",
+        marginBottom: 16,
+        paddingHorizontal: 12,
     },
     passwordInput: {
         flex: 1,
-        height: 40,
+        height: 48,
     },
     icon: {
         padding: 8,
     },
     error: {
         color: "red",
-        marginBottom: 12,
         textAlign: "center",
+        marginBottom: 16,
+    },
+    loginButton: {
+        backgroundColor: "#20A0D8",
+        paddingVertical: 14,
+        borderRadius: 8,
+        alignItems: "center",
+        marginBottom: 16,
+    },
+    loginButtonText: {
+        color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
     },
     forgotContainer: {
         marginVertical: 8,
@@ -137,12 +174,11 @@ const styles = StyleSheet.create({
         color: "blue",
         textDecorationLine: "underline",
     },
-    link: {
-        marginTop: 16,
+    footerText: {
+        fontSize: 16,
+        color: "#20A0D8",
         textAlign: "center",
-    },
-    linkText: {
-        color: "blue",
+        textDecorationLine: "underline",
     },
 });
 
