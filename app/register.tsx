@@ -36,7 +36,6 @@ const Register = () => {
             return;
         }
 
-        // Format the date using local date methods to avoid timezone issues
         const formattedDob = `${dob.getFullYear()}-${(dob.getMonth() + 1)
             .toString()
             .padStart(2, "0")}-${dob.getDate().toString().padStart(2, "0")}`;
@@ -86,7 +85,6 @@ const Register = () => {
                 autoCorrect={false}
             />
 
-            {/* DATE PICKER FIELD */}
             <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateInput}>
                 <Text style={[styles.dateText, !dob && styles.placeholderText]}>
                     {dob ? dob.toLocaleDateString() : "Select Date of Birth"}
@@ -95,13 +93,13 @@ const Register = () => {
 
             {showDatePicker && (
                 <DateTimePicker
-                    value={dob || new Date(2000, 0, 1)} // Default picker to Jan 1, 2000
+                    value={dob || new Date(2000, 0, 1)}
                     mode="date"
                     display="spinner"
                     onChange={(event, selectedDate) => {
                         setShowDatePicker(false);
                         if (selectedDate) {
-                            const localDate = new Date(selectedDate); // Adjust date to local timezone
+                            const localDate = new Date(selectedDate);
                             setDob(localDate);
                         }
                     }}

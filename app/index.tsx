@@ -25,9 +25,9 @@ export default function SplashScreen() {
 
     const timer = setTimeout(() => {
       if (Platform.OS === "web") {
-        window.location.href = "/register";
+        window.location.href = "/login";
       } else {
-        router.replace("/register");
+        router.replace("/login");
       }
     }, 2000);
 

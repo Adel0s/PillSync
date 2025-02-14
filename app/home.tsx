@@ -18,7 +18,6 @@ const Home = () => {
                     <Ionicons name="person-circle-outline" size={28} color="#fff" />
                 </TouchableOpacity>
             </View>
-            {/* Other home page content can go here */}
         </SafeAreaView>
     );
 };
@@ -35,12 +34,12 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         paddingHorizontal: 16,
         backgroundColor: "#fff",
-        // iOS shadow
+
         shadowColor: "#000",
         shadowOpacity: 0.1,
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 2,
-        // Android elevation
+
         elevation: 3,
     },
     title: {
@@ -51,12 +50,12 @@ const styles = StyleSheet.create({
         backgroundColor: "#007AFF",
         padding: 8,
         borderRadius: 20,
-        // iOS shadow
+
         shadowColor: "#000",
         shadowOpacity: 0.2,
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 2,
-        // Android elevation
+
         elevation: 2,
     },
 });
