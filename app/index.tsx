@@ -2,6 +2,7 @@ import { View, Text, StyleSheet, Animated, Platform } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -24,11 +25,15 @@ export default function SplashScreen() {
     ]).start();
 
     const timer = setTimeout(() => {
-      if (Platform.OS === "web") {
-        window.location.href = "/login";
-      } else {
-        router.replace("/login");
-      }
+      const checkSession = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          router.replace("/home");
+        } else {
+          router.replace("/login");
+        }
+      };
+      checkSession();
     }, 2000);
 
     return () => clearTimeout(timer);
