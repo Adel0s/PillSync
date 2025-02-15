@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
+import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
 
 const calculateAge = (dobString: string) => {
@@ -20,6 +20,7 @@ const Profile = () => {
     const [name, setName] = useState<string | null>(null);
     const [dob, setDob] = useState<string | null>(null);
     const [phone, setPhone] = useState<string | null>(null);
+    const [role, setRole] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const router = useRouter();
 
@@ -37,6 +38,7 @@ const Profile = () => {
                     setName(data.user.user_metadata?.full_name ?? null);
                     setDob(data.user.user_metadata?.date_of_birth ?? null);
                     setPhone(data.user.user_metadata?.phone_number ?? null);
+                    setRole(data.user.user_metadata?.role ?? null);
                     setUserId(data.user.id ?? null);
                 }
             } catch (err) {
@@ -54,7 +56,7 @@ const Profile = () => {
                 console.error("Error signing out:", error.message);
             } else {
                 console.log("User signed out");
-                router.replace("/login");
+                // router.replace("/login");
             }
         } catch (err) {
             console.error("Unexpected error:", err);
@@ -70,6 +72,7 @@ const Profile = () => {
                 <Text style={styles.headerTitle}>Profile</Text>
             </View>
             <View style={styles.content}>
+                {role && <Text style={styles.text}>Role: {role}</Text>}
                 {name && <Text style={styles.text}>Logged in as: {name}</Text>}
                 {email && <Text style={styles.text}>User email: {email}</Text>}
                 {dob && <Text style={styles.text}>Date of Birth: {dob}</Text>}
