@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../../lib/supabase";
 import { useRouter } from "expo-router";
+import { supabase } from "../../lib/supabase";
+import { useAuth } from "../../context/AuthProvider";
 
 const calculateAge = (dobString: string) => {
     const birthDate = new Date(dobString);
@@ -16,38 +17,20 @@ const calculateAge = (dobString: string) => {
 };
 
 const Profile = () => {
-    const [email, setEmail] = useState<string | null>(null);
-    const [name, setName] = useState<string | null>(null);
-    const [dob, setDob] = useState<string | null>(null);
-    const [phone, setPhone] = useState<string | null>(null);
-    const [role, setRole] = useState<string | null>(null);
-    const [userId, setUserId] = useState<string | null>(null);
     const router = useRouter();
+    const { user } = useAuth();
 
-    useEffect(() => {
-        const fetchUser = async () => {
-            try {
-                const { data, error } = await supabase.auth.getUser();
-                if (error) {
-                    console.error("Error fetching user:", error.message);
-                    return;
-                }
+    // Immediately return null if there's no user
+    if (!user) {
+        return null;
+    }
 
-                if (data?.user) {
-                    setEmail(data.user.email ?? null);
-                    setName(data.user.user_metadata?.full_name ?? null);
-                    setDob(data.user.user_metadata?.date_of_birth ?? null);
-                    setPhone(data.user.user_metadata?.phone_number ?? null);
-                    setRole(data.user.user_metadata?.role ?? null);
-                    setUserId(data.user.id ?? null);
-                }
-            } catch (err) {
-                console.error("Unexpected error:", err);
-            }
-        };
-
-        fetchUser();
-    }, []);
+    const email = user.email;
+    const fullName = user.user_metadata?.full_name;
+    const dob = user.user_metadata?.date_of_birth;
+    const phone = user.user_metadata?.phone_number;
+    const role = user.user_metadata?.role;
+    const userId = user.id;
 
     const handleSignOut = async () => {
         try {
@@ -56,7 +39,6 @@ const Profile = () => {
                 console.error("Error signing out:", error.message);
             } else {
                 console.log("User signed out");
-                // router.replace("/login");
             }
         } catch (err) {
             console.error("Unexpected error:", err);
@@ -73,7 +55,7 @@ const Profile = () => {
             </View>
             <View style={styles.content}>
                 {role && <Text style={styles.text}>Role: {role}</Text>}
-                {name && <Text style={styles.text}>Logged in as: {name}</Text>}
+                {fullName && <Text style={styles.text}>Logged in as: {fullName}</Text>}
                 {email && <Text style={styles.text}>User email: {email}</Text>}
                 {dob && <Text style={styles.text}>Date of Birth: {dob}</Text>}
                 {dob && <Text style={styles.text}>Age: {calculateAge(dob)} years</Text>}
