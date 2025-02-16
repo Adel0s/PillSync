@@ -1,8 +1,8 @@
-import { View, Text, StyleSheet, Animated, Platform } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import { View, Text, StyleSheet, Animated, Image } from "react-native";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { supabase } from "../lib/supabase";
+import logo from "@/assets/images/logo.png";
 
 export default function SplashScreen() {
   const router = useRouter();
@@ -50,7 +50,7 @@ export default function SplashScreen() {
           },
         ]}
       >
-        <Ionicons name="medical" size={100} color="white" />
+        <Image source={logo} style={styles.logo} resizeMode="contain" />
         <Text style={styles.appName}>PillSync</Text>
       </Animated.View>
     </View>
@@ -66,6 +66,10 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: "center",
+  },
+  logo: {
+    width: 200,
+    height: 200,
   },
   appName: {
     color: "white",
