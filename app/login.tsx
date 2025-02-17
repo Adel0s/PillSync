@@ -8,10 +8,13 @@ import {
     Alert,
     ActivityIndicator,
     ScrollView,
+    Image,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import logo from "../assets/images/logo.png";
 
 const Login = () => {
     const router = useRouter();
@@ -50,66 +53,79 @@ const Login = () => {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <View style={styles.container}>
-                <Text style={styles.header}>Login</Text>
-                <View style={styles.card}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor="#999"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                    <View style={styles.passwordContainer}>
+        <LinearGradient
+            colors={["#caf0f8", "#90e0ef", "#00b4d8", "#0077b6", "#03045e"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradient}
+        >
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+                <View style={styles.container}>
+                    <Image source={logo} style={styles.logo} resizeMode="contain" />
+                    <Text style={styles.header}>Login</Text>
+                    <View style={styles.card}>
                         <TextInput
-                            style={styles.passwordInput}
-                            placeholder="Password"
-                            placeholderTextColor="#999"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry={!showPassword}
+                            style={styles.input}
+                            placeholder="Email"
+                            placeholderTextColor="#0077b6"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
+                            autoCapitalize="none"
                         />
-                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
-                            <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="gray" />
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="Password"
+                                placeholderTextColor="#0077b6"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                            />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
+                                <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="#0077b6" />
+                            </TouchableOpacity>
+                        </View>
+                        {error && <Text style={styles.error}>{error}</Text>}
+                        <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
+                            <Text style={styles.loginButtonText}>{loading ? "Logging in..." : "Login"}</Text>
+                        </TouchableOpacity>
+                        {loading && <ActivityIndicator size="small" color="#0077b6" />}
+                        <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
+                            <Text style={styles.forgotText}>Forgot Password?</Text>
                         </TouchableOpacity>
                     </View>
-                    {error && <Text style={styles.error}>{error}</Text>}
-                    <TouchableOpacity style={styles.loginButton} onPress={handleLogin} disabled={loading}>
-                        <Text style={styles.loginButtonText}>
-                            {loading ? "Logging in..." : "Login"}
-                        </Text>
-                    </TouchableOpacity>
-                    {loading && <ActivityIndicator size="small" color="#0000ff" />}
-                    <TouchableOpacity onPress={handleForgotPassword} style={styles.forgotContainer}>
-                        <Text style={styles.forgotText}>Forgot Password?</Text>
+                    <TouchableOpacity onPress={() => router.push("/register")}>
+                        <Text style={styles.footerText}>Don't have an account? Sign up here</Text>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => router.push("/register")}>
-                    <Text style={styles.footerText}>Don't have an account? Sign up here</Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
+    gradient: {
+        flex: 1,
+    },
     scrollContainer: {
         flexGrow: 1,
-        backgroundColor: "#f2f2f2",
         padding: 16,
         justifyContent: "center",
     },
     container: {
         alignItems: "center",
     },
+    logo: {
+        width: 120,
+        height: 120,
+        marginBottom: 16,
+    },
     header: {
         fontSize: 28,
         fontWeight: "bold",
+        color: "#03045e",
         marginBottom: 24,
-        color: "#333",
     },
     card: {
         width: "100%",
@@ -125,7 +141,7 @@ const styles = StyleSheet.create({
     },
     input: {
         height: 48,
-        borderColor: "#ddd",
+        borderColor: "#00b4d8",
         borderWidth: 1,
         borderRadius: 8,
         marginBottom: 16,
@@ -135,7 +151,7 @@ const styles = StyleSheet.create({
     passwordContainer: {
         flexDirection: "row",
         alignItems: "center",
-        borderColor: "#ddd",
+        borderColor: "#00b4d8",
         borderWidth: 1,
         borderRadius: 8,
         backgroundColor: "#f9f9f9",
@@ -150,12 +166,12 @@ const styles = StyleSheet.create({
         padding: 8,
     },
     error: {
-        color: "red",
+        color: "#ff3b30",
         textAlign: "center",
         marginBottom: 16,
     },
     loginButton: {
-        backgroundColor: "#20A0D8",
+        backgroundColor: "#0077b6",
         paddingVertical: 14,
         borderRadius: 8,
         alignItems: "center",
@@ -171,12 +187,12 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     forgotText: {
-        color: "blue",
+        color: "#0077b6",
         textDecorationLine: "underline",
     },
     footerText: {
         fontSize: 16,
-        color: "#20A0D8",
+        color: "#caf0f8",
         textAlign: "center",
         textDecorationLine: "underline",
     },

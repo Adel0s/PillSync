@@ -8,11 +8,13 @@ import {
     TouchableOpacity,
     StyleSheet,
     Alert,
-    ActivityIndicator,
     ScrollView,
+    Image,
 } from "react-native";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
+import logo from "../assets/images/logo.png";
 
 const Register = () => {
     const router = useRouter();
@@ -50,7 +52,6 @@ const Register = () => {
         };
         if (role === "doctor") {
             metadata.license_number = licenseNumber;
-            // Optionally, add a "verified" flag set to false for manual review.
         }
 
         const { error } = await supabase.auth.signUp({
@@ -75,143 +76,144 @@ const Register = () => {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.scrollContainer}>
-            <View style={styles.container}>
-                <Text style={styles.header}>Create Account</Text>
-                <View style={styles.card}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Full Name"
-                        placeholderTextColor="#999"
-                        value={name}
-                        onChangeText={setName}
-                        autoCapitalize="words"
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Email"
-                        placeholderTextColor="#999"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                    />
-                    <View style={styles.roleContainer}>
-                        <TouchableOpacity
-                            style={[
-                                styles.roleButton,
-                                role === "patient" && styles.selectedRole,
-                            ]}
-                            onPress={() => setRole("patient")}
-                        >
-                            <Text
-                                style={[
-                                    styles.roleText,
-                                    role === "patient" && styles.selectedRoleText,
-                                ]}
-                            >
-                                Patient
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.roleButton,
-                                role === "doctor" && styles.selectedRole,
-                            ]}
-                            onPress={() => setRole("doctor")}
-                        >
-                            <Text
-                                style={[
-                                    styles.roleText,
-                                    role === "doctor" && styles.selectedRoleText,
-                                ]}
-                            >
-                                Doctor
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    {role === "doctor" && (
+        <LinearGradient
+            colors={["#caf0f8", "#90e0ef", "#00b4d8", "#0077b6", "#03045e"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradient}
+        >
+            <ScrollView contentContainerStyle={styles.scrollContainer} style={{ backgroundColor: "transparent" }}>
+                <View style={styles.container}>
+                    <Image source={logo} style={styles.logo} resizeMode="contain" />
+                    <Text style={styles.header}>Create Account</Text>
+                    <View style={styles.card}>
                         <TextInput
                             style={styles.input}
-                            placeholder="License Number"
-                            placeholderTextColor="#999"
-                            value={licenseNumber}
-                            onChangeText={setLicenseNumber}
+                            placeholder="Full Name"
+                            placeholderTextColor="#0077b6"
+                            value={name}
+                            onChangeText={setName}
+                            autoCapitalize="words"
+                        />
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Email"
+                            placeholderTextColor="#0077b6"
+                            value={email}
+                            onChangeText={setEmail}
+                            keyboardType="email-address"
                             autoCapitalize="none"
                         />
-                    )}
-                    <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.input}>
-                        <Text style={!dob ? styles.placeholderText : styles.inputText}>
-                            {dob ? dob.toLocaleDateString() : "Select Date of Birth"}
-                        </Text>
-                    </TouchableOpacity>
-                    {showDatePicker && (
-                        <DateTimePicker
-                            value={dob || new Date(2000, 0, 1)}
-                            mode="date"
-                            display="spinner"
-                            onChange={(event, selectedDate) => {
-                                setShowDatePicker(false);
-                                if (selectedDate) {
-                                    const localDate = new Date(selectedDate);
-                                    setDob(localDate);
-                                }
-                            }}
-                        />
-                    )}
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Phone Number"
-                        placeholderTextColor="#999"
-                        value={phone}
-                        onChangeText={setPhone}
-                        keyboardType="phone-pad"
-                    />
-                    <View style={styles.passwordContainer}>
+                        <View style={styles.roleContainer}>
+                            <TouchableOpacity
+                                style={[styles.roleButton, role === "patient" && styles.selectedRole]}
+                                onPress={() => setRole("patient")}
+                            >
+                                <Text style={[styles.roleText, role === "patient" && styles.selectedRoleText]}>
+                                    Patient
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.roleButton, role === "doctor" && styles.selectedRole]}
+                                onPress={() => setRole("doctor")}
+                            >
+                                <Text style={[styles.roleText, role === "doctor" && styles.selectedRoleText]}>
+                                    Doctor
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                        {role === "doctor" && (
+                            <TextInput
+                                style={styles.input}
+                                placeholder="License Number"
+                                placeholderTextColor="#0077b6"
+                                value={licenseNumber}
+                                onChangeText={setLicenseNumber}
+                                autoCapitalize="none"
+                            />
+                        )}
+                        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.input}>
+                            <Text style={!dob ? styles.placeholderText : styles.inputText}>
+                                {dob ? dob.toLocaleDateString() : "Select Date of Birth"}
+                            </Text>
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                value={dob || new Date(2000, 0, 1)}
+                                mode="date"
+                                display="spinner"
+                                onChange={(event, selectedDate) => {
+                                    setShowDatePicker(false);
+                                    if (selectedDate) {
+                                        const localDate = new Date(
+                                            selectedDate.getFullYear(),
+                                            selectedDate.getMonth(),
+                                            selectedDate.getDate()
+                                        );
+                                        setDob(localDate);
+                                    }
+                                }}
+                            />
+                        )}
                         <TextInput
-                            style={styles.passwordInput}
-                            placeholder="Password"
-                            placeholderTextColor="#999"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry={!showPassword}
+                            style={styles.input}
+                            placeholder="Phone Number"
+                            placeholderTextColor="#0077b6"
+                            value={phone}
+                            onChangeText={setPhone}
+                            keyboardType="phone-pad"
                         />
-                        <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
-                            <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="gray" />
+                        <View style={styles.passwordContainer}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="Password"
+                                placeholderTextColor="#0077b6"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                            />
+                            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.icon}>
+                                <Ionicons name={showPassword ? "eye" : "eye-off"} size={24} color="#0077b6" />
+                            </TouchableOpacity>
+                        </View>
+                        {error && <Text style={styles.error}>{error}</Text>}
+                        <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
+                            <Text style={styles.registerButtonText}>
+                                {loading ? "Signing up..." : "Sign Up"}
+                            </Text>
                         </TouchableOpacity>
                     </View>
-                    {error && <Text style={styles.error}>{error}</Text>}
-                    <TouchableOpacity style={styles.registerButton} onPress={handleRegister} disabled={loading}>
-                        <Text style={styles.registerButtonText}>
-                            {loading ? "Signing up..." : "Sign Up"}
-                        </Text>
+                    <TouchableOpacity onPress={() => router.push("/login")}>
+                        <Text style={styles.footerText}>Already have an account? Login here</Text>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity onPress={() => router.push("/login")}>
-                    <Text style={styles.footerText}>
-                        Already have an account? Login here
-                    </Text>
-                </TouchableOpacity>
-            </View>
-        </ScrollView>
+            </ScrollView>
+        </LinearGradient>
     );
 };
 
 const styles = StyleSheet.create({
+    gradient: {
+        flex: 1,
+    },
     scrollContainer: {
         flexGrow: 1,
-        backgroundColor: "#f2f2f2",
         padding: 16,
         justifyContent: "center",
     },
     container: {
         alignItems: "center",
     },
+    logo: {
+        width: 120,
+        height: 120,
+        marginBottom: 16,
+    },
     header: {
         fontSize: 28,
         fontWeight: "bold",
         marginBottom: 24,
-        color: "#333",
+        color: "#03045e",
     },
     card: {
         width: "100%",
@@ -227,7 +229,7 @@ const styles = StyleSheet.create({
     },
     input: {
         height: 48,
-        borderColor: "#ddd",
+        borderColor: "#00b4d8",
         borderWidth: 1,
         borderRadius: 8,
         marginBottom: 16,
@@ -236,7 +238,7 @@ const styles = StyleSheet.create({
     },
     placeholderText: {
         fontSize: 16,
-        color: "#999",
+        color: "#0077b6",
     },
     inputText: {
         fontSize: 16,
@@ -258,8 +260,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     selectedRole: {
-        backgroundColor: "#20A0D8",
-        borderColor: "#20A0D8",
+        backgroundColor: "#0077b6",
+        borderColor: "#0077b6",
     },
     roleText: {
         fontSize: 16,
@@ -272,7 +274,7 @@ const styles = StyleSheet.create({
     passwordContainer: {
         flexDirection: "row",
         alignItems: "center",
-        borderColor: "#ddd",
+        borderColor: "#00b4d8",
         borderWidth: 1,
         borderRadius: 8,
         backgroundColor: "#f9f9f9",
@@ -292,7 +294,7 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     registerButton: {
-        backgroundColor: "#20A0D8",
+        backgroundColor: "#0077b6",
         paddingVertical: 14,
         borderRadius: 8,
         alignItems: "center",
@@ -304,7 +306,7 @@ const styles = StyleSheet.create({
     },
     footerText: {
         fontSize: 16,
-        color: "#20A0D8",
+        color: "#caf0f8",
         textAlign: "center",
         textDecorationLine: "underline",
     },
