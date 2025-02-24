@@ -20,6 +20,10 @@ const Home = () => {
         router.push("/(profile)");
     };
 
+    const goToMedicationScan = () => {
+        router.push("/(add_medication)");
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
@@ -28,9 +32,15 @@ const Home = () => {
                     <Ionicons name="person-circle-outline" size={28} color="#fff" />
                 </TouchableOpacity>
             </View>
-            <Text style={styles.title}>
-                Welcome back, {user?.user_metadata?.full_name || "User"}
-            </Text>
+
+            <View style={styles.content}>
+                <Text style={styles.welcomeText}>
+                    Welcome back, {user?.user_metadata?.full_name || "User"}
+                </Text>
+                <TouchableOpacity style={styles.scanButton} onPress={goToMedicationScan}>
+                    <Text style={styles.scanButtonText}>Scan Medication</Text>
+                </TouchableOpacity>
+            </View>
         </SafeAreaView>
     );
 };
@@ -58,7 +68,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     iconContainer: {
-        backgroundColor: "#007AFF",
+        backgroundColor: "#0077b6",
         padding: 8,
         borderRadius: 20,
         shadowColor: "#000",
@@ -66,6 +76,34 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowRadius: 2,
         elevation: 2,
+    },
+    content: {
+        flex: 1,
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+    },
+    welcomeText: {
+        fontSize: 18,
+        fontWeight: "500",
+        marginBottom: 24,
+    },
+    scanButton: {
+        backgroundColor: "#0077b6",
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOpacity: 0.2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 2,
+        elevation: 3,
+    },
+    scanButtonText: {
+        color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
     },
 });
 

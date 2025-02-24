@@ -10,6 +10,7 @@ export default function Layout() {
         <Stack.Screen name="register" />
         <Stack.Screen name="home" />
         <Stack.Screen name="(profile)/index" />
+        <Stack.Screen name="(add_medication)/index" />
       </Stack>
     </AuthProvider>
   );
