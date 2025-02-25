@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { SafeAreaView, View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { SafeAreaView, ScrollView, View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
@@ -19,8 +19,6 @@ const calculateAge = (dobString: string) => {
 const Profile = () => {
     const router = useRouter();
     const { user } = useAuth();
-    const [data, setData] = useState<any | null>(null);
-    const [loading, setLoading] = useState(true);
 
     if (!user) {
         return null;
@@ -49,25 +47,38 @@ const Profile = () => {
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.push("/home")}>
-                    <Ionicons name="arrow-back" size={24} color="#007AFF" />
+                    <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Profile</Text>
             </View>
-            <View style={styles.content}>
-                {role && <Text style={styles.text}>Role: {role}</Text>}
-                {fullName && <Text style={styles.text}>Logged in as: {fullName}</Text>}
-                {email && <Text style={styles.text}>User email: {email}</Text>}
-                {dob && <Text style={styles.text}>Date of Birth: {dob}</Text>}
-                {dob && <Text style={styles.text}>Age: {calculateAge(dob)} years</Text>}
-                {phone && <Text style={styles.text}>Phone Number: {phone}</Text>}
-                {userId && <Text style={styles.text}>User ID: {userId}</Text>}
-            </View>
-            <View style={styles.buttonsContainer}>
-                <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-                    <Ionicons name="log-out-outline" size={20} color="#fff" style={styles.signOutIcon} />
-                    <Text style={styles.signOutButtonText}>Sign Out</Text>
-                </TouchableOpacity>
-            </View>
+            <ScrollView contentContainerStyle={styles.scrollContainer}>
+                <View style={styles.logoContainer}>
+                    <Image source={require("../../assets/images/logo.png")} style={styles.logo} />
+                </View>
+                <View style={styles.content}>
+                    {role && <Text style={styles.userInfoText}>Role: {role}</Text>}
+                    {fullName && <Text style={styles.userInfoText}>Logged in as: {fullName}</Text>}
+                    {email && <Text style={styles.userInfoText}>Email: {email}</Text>}
+                    {dob && <Text style={styles.userInfoText}>Date of Birth: {dob}</Text>}
+                    {dob && <Text style={styles.userInfoText}>Age: {calculateAge(dob)} years</Text>}
+                    {phone && <Text style={styles.userInfoText}>Phone Number: {phone}</Text>}
+                    {userId && <Text style={styles.userInfoText}>User ID: {userId}</Text>}
+                </View>
+                <View style={styles.buttonsContainer}>
+                    <TouchableOpacity style={styles.commonButton} onPress={() => router.push("/profile/edit")}>
+                        <Ionicons name="create-outline" size={20} color="#fff" style={styles.buttonIcon} />
+                        <Text style={styles.buttonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.commonButton} onPress={() => router.push("/settings")}>
+                        <Ionicons name="settings-outline" size={20} color="#fff" style={styles.buttonIcon} />
+                        <Text style={styles.buttonText}>Settings</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.commonButton} onPress={handleSignOut}>
+                        <Ionicons name="log-out-outline" size={20} color="#fff" style={styles.buttonIcon} />
+                        <Text style={styles.buttonText}>Sign Out</Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
         </SafeAreaView>
     );
 };
@@ -75,54 +86,80 @@ const Profile = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#f9f9f9",
+        backgroundColor: "#caf0f8",
+    },
+    scrollContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 30,
+        flexGrow: 1,
+        justifyContent: "space-between",
     },
     header: {
         flexDirection: "row",
         alignItems: "center",
+        backgroundColor: "#03045e",
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: "#ddd",
+        borderBottomColor: "#90e0ef",
     },
     backButton: {
-        marginRight: 16,
+        marginRight: 8,
     },
     headerTitle: {
-        fontSize: 20,
+        flex: 1,
+        textAlign: "left",
+        fontSize: 22,
         fontWeight: "bold",
+        color: "#caf0f8",
+    },
+    logoContainer: {
+        alignItems: "center",
+        marginVertical: 20,
+    },
+    logo: {
+        width: 80,
+        height: 80,
+        resizeMode: "contain",
     },
     content: {
-        flex: 1,
-        justifyContent: "center",
         alignItems: "center",
-        padding: 16,
+        marginBottom: 20,
     },
-    text: {
-        fontSize: 16,
-        marginBottom: 10,
+    userInfoText: {
+        fontSize: 18,
+        marginVertical: 6,
+        color: "#03045e",
+        backgroundColor: "#90e0ef",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
         textAlign: "center",
+        width: "100%",
     },
     buttonsContainer: {
-        marginBottom: 20,
         alignItems: "center",
+        marginBottom: 20,
     },
-    signOutButton: {
+    commonButton: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#FF3B30",
+        backgroundColor: "#0077b6",
         borderRadius: 25,
         paddingVertical: 12,
         paddingHorizontal: 20,
+        marginBottom: 12,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.2,
         shadowRadius: 2,
         elevation: 3,
+        width: "80%",
+        justifyContent: "center",
     },
-    signOutIcon: {
+    buttonIcon: {
         marginRight: 8,
     },
-    signOutButtonText: {
+    buttonText: {
         color: "#fff",
         fontSize: 16,
         fontWeight: "bold",
