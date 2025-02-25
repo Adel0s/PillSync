@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     Alert,
     ScrollView,
+    TextInput,
 } from "react-native";
 import { Camera, CameraType, CameraView } from "expo-camera";
 import { useRouter } from "expo-router";
@@ -20,6 +21,15 @@ export default function MedicationScan() {
     const [loading, setLoading] = useState<boolean>(false);
     const [medication, setMedication] = useState<any | null>(null);
 
+    // Manual entry state variables
+    const [medName, setMedName] = useState("");
+    const [activeSubstance, setActiveSubstance] = useState("");
+    const [quantity, setQuantity] = useState("");
+    const [nrOfPills, setNrOfPills] = useState("");
+    const [description, setDescription] = useState("");
+    const [contraindications, setContraindications] = useState("");
+    const [sideEffect, setSideEffect] = useState("");
+
     useEffect(() => {
         (async () => {
             const { status } = await Camera.requestCameraPermissionsAsync();
@@ -31,7 +41,7 @@ export default function MedicationScan() {
         setScanned(true);
         setBarcode(data);
         setLoading(true);
-        console.log(`Bar code with type ${type} and data ${data} has been scanned!`);
+        console.log(`Barcode scanned: type ${type}, data: ${data}`);
 
         const { data: medData, error } = await supabase
             .from("medication")
@@ -46,10 +56,47 @@ export default function MedicationScan() {
         }
         if (medData) {
             setMedication(medData);
+            console.log("Medication found:", medData);
         } else {
+            console.log("Medication not found!");
             Alert.alert("Not Found", "Medication not found. Please enter details manually.");
-            // Navigate to a manual entry form here.
         }
+    };
+
+    const handleSaveMedication = async () => {
+        if (!medName || !activeSubstance) {
+            Alert.alert("Validation", "Please fill in at least the medication name and active substance.");
+            return;
+        }
+        setLoading(true);
+
+        const numericQuantity = quantity ? Number(quantity) : null;
+        const numericNrOfPills = nrOfPills ? Number(nrOfPills) : null;
+
+        const { data: insertedData, error } = await supabase
+            .from("medication")
+            .insert([
+                {
+                    barcode: barcode,
+                    name: medName,
+                    active_substance: activeSubstance,
+                    quantity: numericQuantity,
+                    nr_of_pills: numericNrOfPills,
+                    description: description,
+                    contraindications: contraindications,
+                    side_effect: sideEffect,
+                },
+            ])
+            .maybeSingle();
+
+        setLoading(false);
+        if (error) {
+            Alert.alert("Error", "Failed to save medication.");
+            console.error(error);
+            return;
+        }
+        setMedication(insertedData);
+        Alert.alert("Success", "Medication saved!");
     };
 
     if (hasPermission === null) {
@@ -70,10 +117,11 @@ export default function MedicationScan() {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             {loading && <ActivityIndicator size="large" color="#0077b6" style={styles.loading} />}
+            {/* If not scanned yet, show camera view */}
             {!scanned ? (
                 <CameraView
                     style={styles.camera}
-                    facing={'back'}
+                    facing={"back"}
                     barcodeScannerSettings={{
                         barcodeTypes: ["qr", "ean13", "ean8"],
                     }}
@@ -83,22 +131,18 @@ export default function MedicationScan() {
                         <Text style={styles.scanText}>Scan Medication Barcode</Text>
                     </View>
                 </CameraView>
-            ) : (
+            ) : medication ? (
                 <View style={styles.resultContainer}>
-                    {medication ? (
-                        <View>
-                            <Text style={styles.resultTitle}>Medication Found</Text>
-                            <Text style={styles.resultText}>Name: {medication.name}</Text>
-                            <Text style={styles.resultText}>Active Substance: {medication.active_substance}</Text>
-                            <Text style={styles.resultText}>Quantity: {medication.quantity || "N/A"}</Text>
-                            <Text style={styles.resultText}>Number of Pills: {medication.nr_of_pills || "N/A"}</Text>
-                            <Text style={styles.resultText}>Description: {medication.description || "N/A"}</Text>
-                            <Text style={styles.resultText}>Contraindications: {medication.contraindications || "N/A"}</Text>
-                            <Text style={styles.resultText}>Side Effects: {medication.side_effect || "N/A"}</Text>
-                        </View>
-                    ) : (
-                        <Text style={styles.resultText}>Medication not found.</Text>
-                    )}
+                    <Text style={styles.resultTitle}>Medication Found</Text>
+                    <Text style={styles.resultText}>Name: {medication.name}</Text>
+                    <Text style={styles.resultText}>Active Substance: {medication.active_substance}</Text>
+                    <Text style={styles.resultText}>Quantity: {medication.quantity || "N/A"} mg</Text>
+                    <Text style={styles.resultText}>Number of Pills: {medication.nr_of_pills || "N/A"}</Text>
+                    <Text style={styles.resultText}>Description: {medication.description || "N/A"}</Text>
+                    <Text style={styles.resultText}>
+                        Contraindications: {medication.contraindications || "N/A"}
+                    </Text>
+                    <Text style={styles.resultText}>Side Effects: {medication.side_effect || "N/A"}</Text>
                     <TouchableOpacity
                         style={styles.button}
                         onPress={() => {
@@ -112,7 +156,77 @@ export default function MedicationScan() {
                         <Text style={styles.buttonText}>Back to Home</Text>
                     </TouchableOpacity>
                 </View>
+            ) : (
+                <View style={styles.manualContainer}>
+                    <Text style={styles.resultTitle}>Enter Medication Details</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Medication Name"
+                        placeholderTextColor="#999"
+                        value={medName}
+                        onChangeText={setMedName}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Active Substance"
+                        placeholderTextColor="#999"
+                        value={activeSubstance}
+                        onChangeText={setActiveSubstance}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Quantity (numeric)"
+                        placeholderTextColor="#999"
+                        value={quantity}
+                        onChangeText={setQuantity}
+                        keyboardType="numeric"
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Number of Pills (numeric)"
+                        placeholderTextColor="#999"
+                        value={nrOfPills}
+                        onChangeText={setNrOfPills}
+                        keyboardType="numeric"
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Description"
+                        placeholderTextColor="#999"
+                        value={description}
+                        onChangeText={setDescription}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Contraindications"
+                        placeholderTextColor="#999"
+                        value={contraindications}
+                        onChangeText={setContraindications}
+                    />
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Side Effects"
+                        placeholderTextColor="#999"
+                        value={sideEffect}
+                        onChangeText={setSideEffect}
+                    />
+                    <TouchableOpacity style={styles.button} onPress={handleSaveMedication}>
+                        <Text style={styles.buttonText}>Save Medication</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.button, { backgroundColor: "#0077b6", marginTop: 8 }]}
+                        onPress={() => {
+                            setScanned(false);
+                            setMedication(null);
+                        }}
+                    >
+                        <Text style={styles.buttonText}>Scan Again</Text>
+                    </TouchableOpacity>
+                </View>
             )}
+            <TouchableOpacity style={styles.backButton} onPress={() => router.push("/home")}>
+                <Text style={styles.backButtonText}>Back to Home</Text>
+            </TouchableOpacity>
         </ScrollView>
     );
 }
@@ -159,6 +273,28 @@ const styles = StyleSheet.create({
         fontSize: 18,
         marginBottom: 8,
     },
+    manualContainer: {
+        width: "100%",
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 20,
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    input: {
+        width: "100%",
+        height: 48,
+        borderColor: "#ddd",
+        borderWidth: 1,
+        borderRadius: 8,
+        marginBottom: 12,
+        paddingHorizontal: 12,
+        backgroundColor: "#f9f9f9",
+    },
     button: {
         backgroundColor: "#0077b6",
         paddingVertical: 14,
@@ -171,5 +307,15 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontSize: 18,
         fontWeight: "bold",
+    },
+    backButton: {
+        marginTop: 20,
+        padding: 10,
+        backgroundColor: "#0077b6",
+        borderRadius: 8,
+    },
+    backButtonText: {
+        color: "#fff",
+        fontSize: 16,
     },
 });
