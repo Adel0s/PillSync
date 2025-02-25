@@ -22,31 +22,9 @@ const Profile = () => {
     const [data, setData] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Immediately return null if there's no user
     if (!user) {
         return null;
     }
-
-    useEffect(() => {
-        if (user) {
-            async function fetchUserRole() {
-                const { data, error } = await supabase
-                    .from("user_type")
-                    .select("*")
-                    .eq("id_user", user.id);
-
-                if (error) {
-                    console.error("Error fetching user role:", error);
-                } else if (data) {
-                    setData(data);
-                    console.log(data);
-                }
-                setLoading(false);
-            }
-            fetchUserRole();
-        }
-    }, [user]);
-
     const email = user.email;
     const fullName = user.user_metadata?.full_name;
     const dob = user.user_metadata?.date_of_birth;
@@ -83,13 +61,6 @@ const Profile = () => {
                 {dob && <Text style={styles.text}>Age: {calculateAge(dob)} years</Text>}
                 {phone && <Text style={styles.text}>Phone Number: {phone}</Text>}
                 {userId && <Text style={styles.text}>User ID: {userId}</Text>}
-            </View>
-            <View style={styles.content}>
-                {loading ? (
-                    <Text>Loading role...</Text>
-                ) : (
-                    <Text>Your role: {data[0].role || "Not assigned"}</Text>
-                )}
             </View>
             <View style={styles.buttonsContainer}>
                 <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>

@@ -21,7 +21,6 @@ export default function MedicationScan() {
     const [loading, setLoading] = useState<boolean>(false);
     const [medication, setMedication] = useState<any | null>(null);
 
-    // Manual entry state variables
     const [medName, setMedName] = useState("");
     const [activeSubstance, setActiveSubstance] = useState("");
     const [quantity, setQuantity] = useState("");
