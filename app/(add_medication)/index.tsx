@@ -9,7 +9,7 @@ import {
     ScrollView,
     TextInput,
 } from "react-native";
-import { Camera, CameraType, CameraView } from "expo-camera";
+import { Camera, CameraView } from "expo-camera";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 
@@ -58,7 +58,7 @@ export default function MedicationScan() {
             console.log("Medication found:", medData);
         } else {
             console.log("Medication not found!");
-            Alert.alert("Not Found", "Medication not found. Please enter details manually.");
+            Alert.alert("Not Found", "Medication not found. Please enter details manually. Also check barcode value to match the medication.");
         }
     };
 
@@ -133,9 +133,12 @@ export default function MedicationScan() {
             ) : medication ? (
                 <View style={styles.resultContainer}>
                     <Text style={styles.resultTitle}>Medication Found</Text>
+                    <Text style={styles.resultText}>Barcode: {barcode}</Text>
                     <Text style={styles.resultText}>Name: {medication.name}</Text>
                     <Text style={styles.resultText}>Active Substance: {medication.active_substance}</Text>
-                    <Text style={styles.resultText}>Quantity: {medication.quantity || "N/A"} mg</Text>
+                    <Text style={styles.resultText}>
+                        Quantity: {medication.quantity || "N/A"} {medication.quantity ? "mg" : ""}
+                    </Text>
                     <Text style={styles.resultText}>Number of Pills: {medication.nr_of_pills || "N/A"}</Text>
                     <Text style={styles.resultText}>Description: {medication.description || "N/A"}</Text>
                     <Text style={styles.resultText}>
@@ -158,6 +161,14 @@ export default function MedicationScan() {
             ) : (
                 <View style={styles.manualContainer}>
                     <Text style={styles.resultTitle}>Enter Medication Details</Text>
+                    {/* Barcode field to show and allow modification */}
+                    <TextInput
+                        style={styles.input}
+                        placeholder="Barcode"
+                        placeholderTextColor="#999"
+                        value={barcode}
+                        onChangeText={setBarcode}
+                    />
                     <TextInput
                         style={styles.input}
                         placeholder="Medication Name"
@@ -223,9 +234,6 @@ export default function MedicationScan() {
                     </TouchableOpacity>
                 </View>
             )}
-            <TouchableOpacity style={styles.backButton} onPress={() => router.push("/home")}>
-                <Text style={styles.backButtonText}>Back to Home</Text>
-            </TouchableOpacity>
         </ScrollView>
     );
 }
@@ -306,15 +314,5 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontSize: 18,
         fontWeight: "bold",
-    },
-    backButton: {
-        marginTop: 20,
-        padding: 10,
-        backgroundColor: "#0077b6",
-        borderRadius: 8,
-    },
-    backButtonText: {
-        color: "#fff",
-        fontSize: 16,
     },
 });
