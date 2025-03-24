@@ -169,13 +169,10 @@ const Home = () => {
 };
 
 const styles = StyleSheet.create({
-    /* Container */
     container: {
         flex: 1,
         backgroundColor: COLORS.veryLight,
     },
-
-    /* Header */
     header: {
         height: 60,
         flexDirection: "row",
@@ -204,8 +201,6 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 2,
     },
-
-    /* Daily Progress */
     progressContainer: {
         backgroundColor: COLORS.secondary,
         paddingVertical: 20,
@@ -231,8 +226,6 @@ const styles = StyleSheet.create({
         color: "#fff",
         marginTop: 8,
     },
-
-    /* Quick Actions Title */
     quickActionsTitleContainer: {
         paddingHorizontal: 16,
         marginTop: 20,
@@ -243,8 +236,6 @@ const styles = StyleSheet.create({
         color: COLORS.primaryDark,
         marginBottom: 8,
     },
-
-    /* Quick Actions Container */
     quickActionsContainer: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -253,8 +244,6 @@ const styles = StyleSheet.create({
         // Space out two columns evenly and align them with the same left padding
         justifyContent: "space-between",
     },
-
-    /* Quick Actions Button */
     actionButton: {
         width: "47%",        // two columns with a small gap
         height: 90,
@@ -277,8 +266,6 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         textAlign: "left",
     },
-
-    /* Footer */
     footer: {
         alignItems: "center",
         marginTop: 10,
