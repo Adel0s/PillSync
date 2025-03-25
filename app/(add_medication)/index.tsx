@@ -58,7 +58,10 @@ export default function MedicationScan() {
             console.log("Medication found:", medData);
         } else {
             console.log("Medication not found!");
-            Alert.alert("Not Found", "Medication not found. Please enter details manually. Also check barcode value to match the medication.");
+            Alert.alert(
+                "Not Found",
+                "Medication not found. Please enter details manually. Also check barcode value to match the medication."
+            );
         }
     };
 
@@ -115,7 +118,7 @@ export default function MedicationScan() {
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
-            {loading && <ActivityIndicator size="large" color="#0077b6" style={styles.loading} />}
+            {loading && <ActivityIndicator size="large" color="#20A0D8" style={styles.loading} />}
             {/* If not scanned yet, show camera view */}
             {!scanned ? (
                 <CameraView
@@ -131,37 +134,70 @@ export default function MedicationScan() {
                     </View>
                 </CameraView>
             ) : medication ? (
-                <View style={styles.resultContainer}>
-                    <Text style={styles.resultTitle}>Medication Found</Text>
-                    <Text style={styles.resultText}>Barcode: {barcode}</Text>
-                    <Text style={styles.resultText}>Name: {medication.name}</Text>
-                    <Text style={styles.resultText}>Active Substance: {medication.active_substance}</Text>
-                    <Text style={styles.resultText}>
-                        Quantity: {medication.quantity || "N/A"} {medication.quantity ? "mg" : ""}
-                    </Text>
-                    <Text style={styles.resultText}>Number of Pills: {medication.nr_of_pills || "N/A"}</Text>
-                    <Text style={styles.resultText}>Description: {medication.description || "N/A"}</Text>
-                    <Text style={styles.resultText}>
-                        Contraindications: {medication.contraindications || "N/A"}
-                    </Text>
-                    <Text style={styles.resultText}>Side Effects: {medication.side_effect || "N/A"}</Text>
-                    <TouchableOpacity
-                        style={styles.button}
-                        onPress={() => {
-                            setScanned(false);
-                            setMedication(null);
-                        }}
-                    >
-                        <Text style={styles.buttonText}>Scan Again</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.button} onPress={() => router.push("/home")}>
-                        <Text style={styles.buttonText}>Back to Home</Text>
-                    </TouchableOpacity>
+                <View style={styles.cardContainer}>
+                    <Text style={styles.cardTitle}>Medication details</Text>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Barcode:</Text>
+                        <Text style={styles.detailValue}>{barcode}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Name:</Text>
+                        <Text style={styles.detailValue}>{medication.name}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Active Substance:</Text>
+                        <Text style={styles.detailValue}>{medication.active_substance}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Quantity:</Text>
+                        <Text style={styles.detailValue}>
+                            {medication.quantity ? `${medication.quantity} mg` : "N/A"}
+                        </Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Number of Pills:</Text>
+                        <Text style={styles.detailValue}>{medication.nr_of_pills || "N/A"}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Description:</Text>
+                        <Text style={styles.detailValue}>{medication.description || "N/A"}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Contraindications:</Text>
+                        <Text style={styles.detailValue}>{medication.contraindications || "N/A"}</Text>
+                    </View>
+                    <View style={styles.detailRow}>
+                        <Text style={styles.detailLabel}>Side Effects:</Text>
+                        <Text style={styles.detailValue}>{medication.side_effect || "N/A"}</Text>
+                    </View>
+                    <View style={styles.buttonGroup}>
+                        <TouchableOpacity style={styles.button} onPress={() => router.push({
+                            pathname: "/schedule",
+                            params: { medicationId: medication.id, name: medication.name }
+                        })}>
+                            <Text style={styles.buttonText}>Next</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.button, styles.secondaryButton]}
+                            onPress={() => {
+                                setScanned(false);
+                                setMedication(null);
+                            }}
+                        >
+                            <Text style={styles.secondaryButtonText}>Scan Again</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[styles.button, styles.secondaryButton]}
+                            onPress={() => router.push("/home")}
+                        >
+                            <Text style={styles.secondaryButtonText}>Back to Home</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             ) : (
+                // Manual entry view remains unchanged
                 <View style={styles.manualContainer}>
                     <Text style={styles.resultTitle}>Enter Medication Details</Text>
-                    {/* Barcode field to show and allow modification */}
                     <TextInput
                         style={styles.input}
                         placeholder="Barcode"
@@ -242,6 +278,7 @@ const styles = StyleSheet.create({
     container: {
         flexGrow: 1,
         padding: 16,
+        backgroundColor: "#20A0D8",
     },
     center: {
         flex: 1,
@@ -267,19 +304,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: "bold",
     },
-    resultContainer: {
-        padding: 20,
-        alignItems: "center",
-    },
-    resultTitle: {
-        fontSize: 24,
-        fontWeight: "bold",
-        marginBottom: 16,
-    },
-    resultText: {
-        fontSize: 18,
-        marginBottom: 8,
-    },
     manualContainer: {
         width: "100%",
         backgroundColor: "#fff",
@@ -302,16 +326,68 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         backgroundColor: "#f9f9f9",
     },
+    resultTitle: {
+        fontSize: 24,
+        fontWeight: "bold",
+        marginBottom: 16,
+    },
+    cardContainer: {
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 20,
+        marginVertical: 20,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    cardTitle: {
+        fontSize: 24,
+        fontWeight: "bold",
+        marginBottom: 16,
+        color: "#20A0D8",
+        textAlign: "center",
+    },
+    detailRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 12,
+    },
+    detailLabel: {
+        fontSize: 16,
+        fontWeight: "bold",
+        color: "#333",
+    },
+    detailValue: {
+        fontSize: 16,
+        color: "#333",
+        textAlign: "right",
+        flexShrink: 1,
+    },
+    buttonGroup: {
+        marginTop: 20,
+    },
     button: {
-        backgroundColor: "#0077b6",
+        backgroundColor: "#20A0D8",
         paddingVertical: 14,
         paddingHorizontal: 24,
         borderRadius: 8,
         alignItems: "center",
-        marginTop: 20,
+        marginBottom: 12,
     },
     buttonText: {
         color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
+    },
+    secondaryButton: {
+        backgroundColor: "#fff",
+        borderWidth: 1,
+        borderColor: "#20A0D8",
+    },
+    secondaryButtonText: {
+        color: "#20A0D8",
         fontSize: 18,
         fontWeight: "bold",
     },
