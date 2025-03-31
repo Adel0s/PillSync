@@ -173,7 +173,7 @@ export default function MedicationScan() {
                     <View style={styles.buttonGroup}>
                         <TouchableOpacity style={styles.button} onPress={() => router.push({
                             pathname: "/schedule",
-                            params: { medicationId: medication.id, name: medication.name }
+                            params: { medicationId: medication.id, name: medication.name, quantity: medication.quantity, nr_of_pills: medication.nr_of_pills }
                         })}>
                             <Text style={styles.buttonText}>Next</Text>
                         </TouchableOpacity>

@@ -11,8 +11,6 @@ import {
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
-// If you plan to use Ionicons or other icons, import them
-// import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 
 // Example frequency options
@@ -35,21 +33,26 @@ const DURATION_OPTIONS = [
 
 export default function MedicationSchedulePage() {
     const router = useRouter();
-    // If you passed in route params (e.g., medicationId) from the scanning page:
-    //   router.push({
-    //     pathname: "/add_medication/schedule",
-    //     params: { medicationId, name, quantity, etc. }
-    //   })
-    // You can retrieve them here:
-    const { medicationId, name, quantity } = useLocalSearchParams<{
+    // Retrieve data passed from the scanning/manual-entry page.
+    // e.g., router.push({ pathname: "/add_medication/schedule", params: { medicationId, name, quantity, nr_of_pills } })
+    const { medicationId, name, quantity, nr_of_pills } = useLocalSearchParams<{
         medicationId?: string;
         name?: string;
-        quantity?: string;
+        quantity?: string;      // e.g., "400 mg" or just "400"
+        nr_of_pills?: string;   // e.g., "10"
     }>();
 
-    // State for scheduling
+    // Distinguish medication strength from dosage
     const [medName, setMedName] = useState(name || "");
-    const [dosage, setDosage] = useState(quantity || "");
+    const [medStrength, setMedStrength] = useState(quantity || ""); // read-only display for "400 mg"
+    const [dosage, setDosage] = useState(""); // user-entered (e.g. "2 capsules")
+
+    // Use nr_of_pills as initial quantity in the schedule
+    const [initialQuantity, setInitialQuantity] = useState(
+        nr_of_pills ? Number(nr_of_pills) : 0
+    );
+
+    // Scheduling details
     const [selectedFrequency, setSelectedFrequency] = useState<number | null>(1);
     const [selectedDuration, setSelectedDuration] = useState<number | null>(7);
     const [startDate, setStartDate] = useState<Date>(new Date());
@@ -57,64 +60,53 @@ export default function MedicationSchedulePage() {
     const [enableReminders, setEnableReminders] = useState(true);
     const [instructions, setInstructions] = useState("");
 
-    // For demonstration, we assume the user is a "patient" with ID stored in supabase auth
-    // or you can pass the patient_id in route params as well.
+    // For demonstration, assume the user is a "patient" with ID from Supabase auth
     const [patientId, setPatientId] = useState<string | null>(null);
 
     useEffect(() => {
-        // Example: get the currently logged in user to retrieve their ID
-        supabase.auth.getUser().then(({ data, error }) => {
+        supabase.auth.getUser().then(({ data }) => {
             if (data?.user) {
                 setPatientId(data.user.id);
             }
         });
     }, []);
 
-    // Called when user taps "Add Medication"
     const handleAddMedication = async () => {
         if (!patientId) {
             Alert.alert("Error", "No patient ID found. Please log in first.");
             return;
         }
 
-        // Example insertion flow:
-        // 1. If medication is not yet in the DB, you’d create it or use medicationId if it already exists.
-        // 2. Insert a row into medication_schedule with the schedule details.
-        // 3. If frequency > 0, insert the daily times into medication_schedule_times, etc.
-
-        // For demonstration, let’s do a basic insert into medication_schedule:
         try {
-            // Insert into medication_schedule
+            // If "Ongoing" is selected, you might store a large number or handle differently
             const durationDays = selectedDuration === -1 ? 36500 : selectedDuration;
-            // If "Ongoing" is chosen, you might store 36500 days or handle it differently
 
+            // Insert schedule
             const { data: scheduleData, error } = await supabase
                 .from("medication_schedule")
                 .insert([
                     {
-                        medication_id: medicationId ? Number(medicationId) : null, // or handle creation if not existing
+                        medication_id: medicationId ? Number(medicationId) : null,
                         patient_id: patientId,
                         start_date: startDate.toISOString(),
                         duration_days: durationDays,
-                        initial_quantity: dosage ? Number(dosage) : 0,
-                        remaining_quantity: dosage ? Number(dosage) : 0,
-                        instructions,
-                        // You could also store a "prescribed_by" or "prescription_date" if needed
+                        // Use the number_of_pills as the initial quantity
+                        initial_quantity: initialQuantity,
+                        remaining_quantity: initialQuantity,
+                        instructions: instructions,
+                        dosage: dosage,
                     },
                 ])
                 .select("*")
                 .single();
 
-            if (error) {
-                throw error;
-            }
+            if (error) throw error;
 
             const newScheduleId = scheduleData.id;
 
-            // If frequency > 0, you might create multiple times per day, e.g., morning/noon/evening.
-            // For now, let's do a simple example that if selectedFrequency is 2 => 2 times per day at 9 AM and 9 PM, etc.
+            // Insert times based on selected frequency
             if (selectedFrequency && selectedFrequency > 0) {
-                const timesToInsert = [];
+                const timesToInsert: string[] = [];
                 if (selectedFrequency === 1) {
                     timesToInsert.push("09:00:00");
                 } else if (selectedFrequency === 2) {
@@ -131,16 +123,14 @@ export default function MedicationSchedulePage() {
                         timesToInsert.map((t) => ({
                             schedule_id: newScheduleId,
                             time: t,
-                            notification_offset: enableReminders ? 5 : null, // e.g., 5 minutes prior
+                            notification_offset: enableReminders ? 5 : null, // e.g., 5 min prior
                         }))
                     );
-                if (timesError) {
-                    throw timesError;
-                }
+                if (timesError) throw timesError;
             }
 
             Alert.alert("Success", "Medication schedule added!");
-            // Go back home or wherever you want
+            // Navigate away (e.g. to home)
             router.push("/home");
         } catch (err: any) {
             console.error(err);
@@ -150,14 +140,15 @@ export default function MedicationSchedulePage() {
 
     return (
         <View style={styles.container}>
-            {/* You can replace this with your custom header or remove it */}
+            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>New Medication</Text>
             </View>
+
             <ScrollView contentContainerStyle={styles.scrollContent}>
-                {/* Card-like container for inputs */}
                 <View style={styles.card}>
                     {/* Medication Name */}
+                    <Text style={styles.label}>Medication Name</Text>
                     <TextInput
                         style={styles.input}
                         placeholder="Medication Name"
@@ -166,14 +157,33 @@ export default function MedicationSchedulePage() {
                         onChangeText={setMedName}
                     />
 
-                    {/* Dosage */}
+                    {/* Medication Strength (read-only) */}
+                    <Text style={styles.label}>Medication Strength</Text>
+                    <TextInput
+                        style={[styles.input, styles.readOnlyInput]}
+                        value={medStrength}
+                        editable={false}
+                    />
+
+                    {/* Number of Pills (initial quantity) */}
+                    <Text style={styles.label}>Number of pills</Text>
                     <TextInput
                         style={styles.input}
-                        placeholder="Dosage (e.g., 500mg)"
+                        placeholder="Enter total pills (e.g. 10)"
+                        placeholderTextColor="#999"
+                        value={String(initialQuantity)}
+                        onChangeText={(val) => setInitialQuantity(Number(val))}
+                        keyboardType="numeric"
+                    />
+
+                    {/* Dosage (e.g. 2 capsules) */}
+                    <Text style={styles.label}>Dosage</Text>
+                    <TextInput
+                        style={styles.input}
+                        placeholder="e.g., 2 capsules"
                         placeholderTextColor="#999"
                         value={dosage}
                         onChangeText={setDosage}
-                        keyboardType="numeric"
                     />
 
                     {/* Frequency */}
@@ -225,12 +235,13 @@ export default function MedicationSchedulePage() {
                     </View>
 
                     {/* Start Date */}
+                    <Text style={styles.label}>Start Date</Text>
                     <TouchableOpacity
                         style={[styles.input, { justifyContent: "center" }]}
                         onPress={() => setShowDatePicker(true)}
                     >
                         <Text style={{ color: "#333" }}>
-                            Starts {startDate.toLocaleDateString()}
+                            {startDate.toLocaleDateString()}
                         </Text>
                     </TouchableOpacity>
                     {showDatePicker && (
@@ -261,6 +272,7 @@ export default function MedicationSchedulePage() {
                     </View>
 
                     {/* Notes or instructions */}
+                    <Text style={styles.label}>Special Instructions</Text>
                     <TextInput
                         style={[styles.input, { height: 80, textAlignVertical: "top" }]}
                         multiline
@@ -280,6 +292,7 @@ export default function MedicationSchedulePage() {
     );
 }
 
+// Example styling with your color palette
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -312,6 +325,12 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 3,
     },
+    label: {
+        fontSize: 14,
+        fontWeight: "600",
+        color: "#03045e",
+        marginBottom: 4,
+    },
     input: {
         height: 48,
         borderColor: "#ddd",
@@ -321,6 +340,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         backgroundColor: "#f9f9f9",
         color: "#333",
+    },
+    readOnlyInput: {
+        backgroundColor: "#e0e0e0", // visually indicate read-only
     },
     sectionTitle: {
         fontSize: 16,
