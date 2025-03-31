@@ -10,6 +10,7 @@ import {
     TextInput,
 } from "react-native";
 import { Camera, CameraView } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 
@@ -40,7 +41,7 @@ export default function MedicationScan() {
         setScanned(true);
         setBarcode(data);
         setLoading(true);
-        console.log(`Barcode scanned: type ${type}, data: ${data}`);
+        console.log(`Barcode scanned: type: ${type}, data: ${data}`);
 
         const { data: medData, error } = await supabase
             .from("medication")
@@ -62,6 +63,40 @@ export default function MedicationScan() {
                 "Not Found",
                 "Medication not found. Please enter details manually. Also check barcode value to match the medication."
             );
+        }
+    };
+
+    const handleUploadPhoto = async () => {
+        // Request permission for media library
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== "granted") {
+            Alert.alert("Permission needed", "Permission to access media library is required.");
+            return;
+        }
+        // Launch image picker with updated mediaTypes option
+        let result = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 1,
+        });
+        console.log("Image picker result:", result);
+        if (!result.canceled) {
+            try {
+                setLoading(true);
+                // Use the built-in scanFromURLAsync to try and read the barcode from the uploaded image.
+                const scannedResult = await Camera.scanFromURLAsync(result.assets[0].uri, ["qr", "ean13", "ean8"]);
+                console.log("Scanned result:", scannedResult);
+                if (scannedResult && scannedResult.length > 0) {
+                    // Process the first scanned result
+                    await handleBarCodeScanned(scannedResult[0]);
+                } else {
+                    Alert.alert("No Barcode Found", "No barcode could be detected from the selected image.");
+                }
+            } catch (error) {
+                console.error(error);
+                Alert.alert("Error", "An error occurred while scanning the barcode from the image.");
+            } finally {
+                setLoading(false);
+            }
         }
     };
 
@@ -119,20 +154,25 @@ export default function MedicationScan() {
     return (
         <ScrollView contentContainerStyle={styles.container}>
             {loading && <ActivityIndicator size="large" color="#20A0D8" style={styles.loading} />}
-            {/* If not scanned yet, show camera view */}
+            {/* If not scanned yet, show camera view and upload option */}
             {!scanned ? (
-                <CameraView
-                    style={styles.camera}
-                    facing={"back"}
-                    barcodeScannerSettings={{
-                        barcodeTypes: ["qr", "ean13", "ean8"],
-                    }}
-                    onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
-                >
-                    <View style={styles.scanOverlay}>
-                        <Text style={styles.scanText}>Scan Medication Barcode</Text>
-                    </View>
-                </CameraView>
+                <>
+                    <CameraView
+                        style={styles.camera}
+                        facing={"back"}
+                        barcodeScannerSettings={{
+                            barcodeTypes: ["qr", "ean13", "ean8"],
+                        }}
+                        onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+                    >
+                        <View style={styles.scanOverlay}>
+                            <Text style={styles.scanText}>Scan Medication Barcode</Text>
+                        </View>
+                    </CameraView>
+                    <TouchableOpacity style={styles.uploadButton} onPress={handleUploadPhoto}>
+                        <Text style={styles.uploadButtonText}>Upload Photo</Text>
+                    </TouchableOpacity>
+                </>
             ) : medication ? (
                 <View style={styles.cardContainer}>
                     <Text style={styles.cardTitle}>Medication details</Text>
@@ -171,10 +211,20 @@ export default function MedicationScan() {
                         <Text style={styles.detailValue}>{medication.side_effect || "N/A"}</Text>
                     </View>
                     <View style={styles.buttonGroup}>
-                        <TouchableOpacity style={styles.button} onPress={() => router.push({
-                            pathname: "/schedule",
-                            params: { medicationId: medication.id, name: medication.name, quantity: medication.quantity, nr_of_pills: medication.nr_of_pills }
-                        })}>
+                        <TouchableOpacity
+                            style={styles.button}
+                            onPress={() =>
+                                router.push({
+                                    pathname: "/schedule",
+                                    params: {
+                                        medicationId: medication.id,
+                                        name: medication.name,
+                                        quantity: medication.quantity,
+                                        nr_of_pills: medication.nr_of_pills,
+                                    },
+                                })
+                            }
+                        >
                             <Text style={styles.buttonText}>Next</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
@@ -186,10 +236,7 @@ export default function MedicationScan() {
                         >
                             <Text style={styles.secondaryButtonText}>Scan Again</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[styles.button, styles.secondaryButton]}
-                            onPress={() => router.push("/home")}
-                        >
+                        <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => router.push("/home")}>
                             <Text style={styles.secondaryButtonText}>Back to Home</Text>
                         </TouchableOpacity>
                     </View>
@@ -301,6 +348,19 @@ const styles = StyleSheet.create({
     },
     scanText: {
         color: "#fff",
+        fontSize: 18,
+        fontWeight: "bold",
+    },
+    uploadButton: {
+        marginTop: 12,
+        backgroundColor: "#fff",
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+        alignItems: "center",
+    },
+    uploadButtonText: {
+        color: "#20A0D8",
         fontSize: 18,
         fontWeight: "bold",
     },
