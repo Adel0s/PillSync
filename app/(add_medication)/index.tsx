@@ -76,7 +76,7 @@ export default function MedicationScan() {
         }
         // Launch image picker with updated mediaTypes option
         let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ['images'],
+            mediaTypes: ["images"],
             quality: 1,
         });
         console.log("Image picker result:", result);
@@ -84,11 +84,14 @@ export default function MedicationScan() {
             try {
                 setLoading(true);
                 // Use the built-in scanFromURLAsync to try and read the barcode from the uploaded image.
-                const scannedResult = await Camera.scanFromURLAsync(result.assets[0].uri, ["qr", "ean13", "ean8"]);
+                const scannedResult = await Camera.scanFromURLAsync(result.assets[0].uri, [
+                    "qr",
+                    "ean13",
+                    "ean8",
+                ]);
                 console.log("Scanned result:", scannedResult);
                 if (scannedResult && scannedResult.length > 0) {
-                    // Note:
-                    // Scanning from a static image can be slower than live scanning due to additional image processing.
+                    // Note: Scanning from a static image can be slower than live scanning due to additional image processing.
                     // The returned barcode type might differ (e.g., a numeric value like 32 instead of "ean13")
                     // which is normal based on the underlying implementation.
                     await handleBarCodeScanned(scannedResult[0]);
@@ -170,7 +173,14 @@ export default function MedicationScan() {
                         // TODO: The code is scanned very quiclkly, so I need to add a delay to avoid multiple scans.
                         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
                     >
-                        <View style={styles.scanOverlay}>
+                        <View style={styles.overlay}>
+                            <View style={styles.topOverlay} />
+                            <View style={styles.middleOverlay}>
+                                <View style={styles.sideOverlay} />
+                                <View style={styles.scanBox} />
+                                <View style={styles.sideOverlay} />
+                            </View>
+                            <View style={styles.bottomOverlay} />
                             <Text style={styles.scanText}>Scan Medication Barcode</Text>
                         </View>
                     </CameraView>
@@ -241,7 +251,10 @@ export default function MedicationScan() {
                         >
                             <Text style={styles.secondaryButtonText}>Scan Again</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.button, styles.secondaryButton]} onPress={() => router.push("/home")}>
+                        <TouchableOpacity
+                            style={[styles.button, styles.secondaryButton]}
+                            onPress={() => router.push("/home")}
+                        >
                             <Text style={styles.secondaryButtonText}>Back to Home</Text>
                         </TouchableOpacity>
                     </View>
@@ -344,17 +357,46 @@ const styles = StyleSheet.create({
         flex: 1,
         height: 300,
     },
-    scanOverlay: {
-        flex: 1,
-        justifyContent: "flex-end",
+    overlay: {
+        position: "absolute",
+        top: 0,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        justifyContent: "center",
         alignItems: "center",
-        paddingBottom: 50,
+    },
+    topOverlay: {
+        flex: 1,
+        width: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    middleOverlay: {
+        flexDirection: "row",
+    },
+    sideOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
+    scanBox: {
+        width: 250,
+        height: 250,
+        borderWidth: 2,
+        borderColor: "#fff",
         backgroundColor: "transparent",
     },
+    bottomOverlay: {
+        flex: 1,
+        width: "100%",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
+    },
     scanText: {
+        position: "absolute",
+        bottom: 50,
         color: "#fff",
         fontSize: 18,
         fontWeight: "bold",
+        textAlign: "center",
     },
     uploadButton: {
         marginTop: 12,
