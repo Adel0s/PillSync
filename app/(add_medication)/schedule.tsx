@@ -8,10 +8,12 @@ import {
     ScrollView,
     Switch,
     Alert,
+    Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../lib/supabase";
+import { WheelPicker } from "react-native-ui-lib";
 
 // Example frequency options
 const FREQUENCY_OPTIONS = [
@@ -30,6 +32,40 @@ const DURATION_OPTIONS = [
     { label: "90 days", value: 90 },
     { label: "Ongoing", value: -1 },
 ];
+
+function NotificationOffsetWheel({
+    notificationOffset,
+    onChange,
+}: {
+    notificationOffset: number;
+    onChange: (value: number) => void;
+}) {
+    // Create an array of items from 1 to 60
+    const items = Array.from({ length: 60 }, (_, i) => ({
+        label: (i + 1).toString(),
+        value: i + 1,
+    }));
+
+    return (
+        <View style={styles.wheelContainer}>
+            <WheelPicker
+                // The number of rows you see at once (including the selected row).
+                numberOfVisibleRows={5}
+                // Height each row will occupy.
+                itemHeight={40}
+                // Current selected value
+                initialValue={notificationOffset}
+                // The array of items (label + value)
+                items={items}
+                // Called when user scrolls to a new item
+                onChange={onChange}
+                // Make the picker tall enough so the selected item is clearly centered
+                style={styles.wheelPicker}
+            />
+            <Text style={styles.minutesText}>minutes</Text>
+        </View>
+    );
+}
 
 export default function MedicationSchedulePage() {
     const router = useRouter();
@@ -58,6 +94,10 @@ export default function MedicationSchedulePage() {
     // State for custom duration
     const [isCustomDuration, setIsCustomDuration] = useState(false);
     const [customDuration, setCustomDuration] = useState("");
+
+    // New state for notification offset (in minutes)
+    const [notificationOffset, setNotificationOffset] = useState(5);
+    const [showNotificationPicker, setShowNotificationPicker] = useState(false);
 
     const [patientId, setPatientId] = useState<string | null>(null);
 
@@ -127,7 +167,7 @@ export default function MedicationSchedulePage() {
                         timesToInsert.map((t) => ({
                             schedule_id: newScheduleId,
                             time: t,
-                            notification_offset: enableReminders ? 5 : null,
+                            notification_offset: enableReminders ? notificationOffset : null,
                         }))
                     );
                 if (timesError) throw timesError;
@@ -297,6 +337,17 @@ export default function MedicationSchedulePage() {
                         />
                     </View>
 
+                    {enableReminders && (
+                        <TouchableOpacity
+                            style={styles.notificationButton}
+                            onPress={() => setShowNotificationPicker(true)}
+                        >
+                            <Text style={styles.notificationButtonText}>
+                                Set reminder: {notificationOffset} minutes
+                            </Text>
+                        </TouchableOpacity>
+                    )}
+
                     <Text style={styles.label}>Special Instructions</Text>
                     <TextInput
                         style={[styles.input, { height: 80, textAlignVertical: "top" }]}
@@ -312,6 +363,29 @@ export default function MedicationSchedulePage() {
                     <Text style={styles.addButtonText}>Add Medication</Text>
                 </TouchableOpacity>
             </ScrollView>
+
+            {/* Modal for Notification Offset Picker */}
+            <Modal
+                visible={showNotificationPicker}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowNotificationPicker(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <NotificationOffsetWheel
+                            notificationOffset={notificationOffset}
+                            onChange={setNotificationOffset}
+                        />
+                        <TouchableOpacity
+                            style={styles.modalCloseButton}
+                            onPress={() => setShowNotificationPicker(false)}
+                        >
+                            <Text style={styles.modalCloseButtonText}>Done</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -319,7 +393,7 @@ export default function MedicationSchedulePage() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#caf0f8",
+        backgroundColor: "#fff",
     },
     header: {
         backgroundColor: "#0077b6",
@@ -412,6 +486,19 @@ const styles = StyleSheet.create({
         flexShrink: 1,
         marginRight: 8,
     },
+    notificationButton: {
+        backgroundColor: "#0077b6",
+        borderRadius: 8,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        alignItems: "center",
+        marginBottom: 16,
+    },
+    notificationButtonText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "bold",
+    },
     addButton: {
         backgroundColor: "#0077b6",
         borderRadius: 8,
@@ -423,5 +510,46 @@ const styles = StyleSheet.create({
         color: "#fff",
         fontSize: 18,
         fontWeight: "bold",
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.5)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalContent: {
+        backgroundColor: "#fff",
+        borderRadius: 8,
+        padding: 16,
+        width: "80%",
+        alignItems: "center",
+    },
+    modalCloseButton: {
+        marginTop: 16,
+        backgroundColor: "#0077b6",
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 8,
+    },
+    modalCloseButtonText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "bold",
+    },
+    // Styles for the wheel picker using react-native-ui-lib
+    wheelContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginVertical: 16,
+    },
+    wheelPicker: {
+        height: 200,   // Enough height so the selected item is clearly in the center
+        width: 100,
+    },
+    minutesText: {
+        fontSize: 16,
+        color: "#03045e",
+        fontWeight: "600",
+        marginLeft: 8,
     },
 });
