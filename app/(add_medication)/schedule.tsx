@@ -19,7 +19,7 @@ const FREQUENCY_OPTIONS = [
     { label: "Twice daily", value: 2 },
     { label: "Three times daily", value: 3 },
     { label: "Four times daily", value: 4 },
-    { label: "As needed", value: 0 }, // or handle "as needed" differently
+    { label: "As needed", value: 0 },
 ];
 
 // Example duration options
@@ -28,26 +28,21 @@ const DURATION_OPTIONS = [
     { label: "14 days", value: 14 },
     { label: "30 days", value: 30 },
     { label: "90 days", value: 90 },
-    { label: "Ongoing", value: -1 }, // or handle "ongoing" differently
+    { label: "Ongoing", value: -1 },
 ];
 
 export default function MedicationSchedulePage() {
     const router = useRouter();
-    // Retrieve data passed from the scanning/manual-entry page.
-    // e.g., router.push({ pathname: "/add_medication/schedule", params: { medicationId, name, quantity, nr_of_pills } })
     const { medicationId, name, quantity, nr_of_pills } = useLocalSearchParams<{
         medicationId?: string;
         name?: string;
-        quantity?: string;      // e.g., "400 mg" or just "400"
-        nr_of_pills?: string;   // e.g., "10"
+        quantity?: string;
+        nr_of_pills?: string;
     }>();
 
-    // Distinguish medication strength from dosage
     const [medName, setMedName] = useState(name || "");
-    const [medStrength, setMedStrength] = useState(quantity || ""); // read-only display for "400 mg"
-    const [dosage, setDosage] = useState(""); // user-entered (e.g. "2 capsules")
-
-    // Use nr_of_pills as initial quantity in the schedule
+    const [medStrength, setMedStrength] = useState(quantity || "");
+    const [dosage, setDosage] = useState("");
     const [initialQuantity, setInitialQuantity] = useState(
         nr_of_pills ? Number(nr_of_pills) : 0
     );
@@ -60,7 +55,10 @@ export default function MedicationSchedulePage() {
     const [enableReminders, setEnableReminders] = useState(true);
     const [instructions, setInstructions] = useState("");
 
-    // For demonstration, assume the user is a "patient" with ID from Supabase auth
+    // State for custom duration
+    const [isCustomDuration, setIsCustomDuration] = useState(false);
+    const [customDuration, setCustomDuration] = useState("");
+
     const [patientId, setPatientId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -78,8 +76,16 @@ export default function MedicationSchedulePage() {
         }
 
         try {
-            // If "Ongoing" is selected, you might store a large number or handle differently
-            const durationDays = selectedDuration === -1 ? 36500 : selectedDuration;
+            let durationDays: number;
+            if (isCustomDuration) {
+                durationDays = Number(customDuration);
+                if (isNaN(durationDays) || durationDays <= 0) {
+                    Alert.alert("Error", "Please enter a valid number of days for the custom duration.");
+                    return;
+                }
+            } else {
+                durationDays = selectedDuration === -1 ? 36500 : (selectedDuration as number);
+            }
 
             // Insert schedule
             const { data: scheduleData, error } = await supabase
@@ -90,7 +96,6 @@ export default function MedicationSchedulePage() {
                         patient_id: patientId,
                         start_date: startDate.toISOString(),
                         duration_days: durationDays,
-                        // Use the number_of_pills as the initial quantity
                         initial_quantity: initialQuantity,
                         remaining_quantity: initialQuantity,
                         instructions: instructions,
@@ -116,21 +121,19 @@ export default function MedicationSchedulePage() {
                 } else if (selectedFrequency === 4) {
                     timesToInsert.push("06:00:00", "12:00:00", "18:00:00", "23:00:00");
                 }
-                // Insert each time row
                 const { error: timesError } = await supabase
                     .from("medication_schedule_times")
                     .insert(
                         timesToInsert.map((t) => ({
                             schedule_id: newScheduleId,
                             time: t,
-                            notification_offset: enableReminders ? 5 : null, // e.g., 5 min prior
+                            notification_offset: enableReminders ? 5 : null,
                         }))
                     );
                 if (timesError) throw timesError;
             }
 
             Alert.alert("Success", "Medication schedule added!");
-            // Navigate away (e.g. to home)
             router.push("/home");
         } catch (err: any) {
             console.error(err);
@@ -140,14 +143,12 @@ export default function MedicationSchedulePage() {
 
     return (
         <View style={styles.container}>
-            {/* Header */}
             <View style={styles.header}>
                 <Text style={styles.headerTitle}>New Medication</Text>
             </View>
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.card}>
-                    {/* Medication Name */}
                     <Text style={styles.label}>Medication Name</Text>
                     <TextInput
                         style={styles.input}
@@ -157,7 +158,6 @@ export default function MedicationSchedulePage() {
                         onChangeText={setMedName}
                     />
 
-                    {/* Medication Strength (read-only) */}
                     <Text style={styles.label}>Medication Strength</Text>
                     <TextInput
                         style={[styles.input, styles.readOnlyInput]}
@@ -165,7 +165,6 @@ export default function MedicationSchedulePage() {
                         editable={false}
                     />
 
-                    {/* Number of Pills (initial quantity) */}
                     <Text style={styles.label}>Number of pills</Text>
                     <TextInput
                         style={styles.input}
@@ -176,7 +175,6 @@ export default function MedicationSchedulePage() {
                         keyboardType="numeric"
                     />
 
-                    {/* Dosage (e.g. 2 capsules) */}
                     <Text style={styles.label}>Dosage</Text>
                     <TextInput
                         style={styles.input}
@@ -186,7 +184,6 @@ export default function MedicationSchedulePage() {
                         onChangeText={setDosage}
                     />
 
-                    {/* Frequency */}
                     <Text style={styles.sectionTitle}>How often?</Text>
                     <View style={styles.optionsRow}>
                         {FREQUENCY_OPTIONS.map((option) => (
@@ -210,7 +207,6 @@ export default function MedicationSchedulePage() {
                         ))}
                     </View>
 
-                    {/* Duration */}
                     <Text style={styles.sectionTitle}>For how long?</Text>
                     <View style={styles.optionsRow}>
                         {DURATION_OPTIONS.map((option) => (
@@ -218,23 +214,54 @@ export default function MedicationSchedulePage() {
                                 key={option.value}
                                 style={[
                                     styles.optionButton,
-                                    selectedDuration === option.value && styles.optionButtonSelected,
+                                    !isCustomDuration && selectedDuration === option.value && styles.optionButtonSelected,
                                 ]}
-                                onPress={() => setSelectedDuration(option.value)}
+                                onPress={() => {
+                                    setIsCustomDuration(false);
+                                    setSelectedDuration(option.value);
+                                }}
                             >
                                 <Text
                                     style={[
                                         styles.optionButtonText,
-                                        selectedDuration === option.value && styles.optionButtonTextSelected,
+                                        !isCustomDuration && selectedDuration === option.value && styles.optionButtonTextSelected,
                                     ]}
                                 >
                                     {option.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
+                        <TouchableOpacity
+                            style={[
+                                styles.optionButton,
+                                isCustomDuration && styles.optionButtonSelected,
+                            ]}
+                            onPress={() => {
+                                setIsCustomDuration(true);
+                                setSelectedDuration(null);
+                            }}
+                        >
+                            <Text
+                                style={[
+                                    styles.optionButtonText,
+                                    isCustomDuration && styles.optionButtonTextSelected,
+                                ]}
+                            >
+                                Custom
+                            </Text>
+                        </TouchableOpacity>
                     </View>
+                    {isCustomDuration && (
+                        <TextInput
+                            style={[styles.input, { marginBottom: 16 }]}
+                            placeholder="Enter number of days"
+                            placeholderTextColor="#999"
+                            keyboardType="numeric"
+                            value={customDuration}
+                            onChangeText={setCustomDuration}
+                        />
+                    )}
 
-                    {/* Start Date */}
                     <Text style={styles.label}>Start Date</Text>
                     <TouchableOpacity
                         style={[styles.input, { justifyContent: "center" }]}
@@ -258,7 +285,6 @@ export default function MedicationSchedulePage() {
                         />
                     )}
 
-                    {/* Reminders */}
                     <View style={styles.reminderRow}>
                         <Text style={styles.reminderText}>
                             Get notified when it's time to take your medications
@@ -271,7 +297,6 @@ export default function MedicationSchedulePage() {
                         />
                     </View>
 
-                    {/* Notes or instructions */}
                     <Text style={styles.label}>Special Instructions</Text>
                     <TextInput
                         style={[styles.input, { height: 80, textAlignVertical: "top" }]}
@@ -283,7 +308,6 @@ export default function MedicationSchedulePage() {
                     />
                 </View>
 
-                {/* Add Medication Button */}
                 <TouchableOpacity style={styles.addButton} onPress={handleAddMedication}>
                     <Text style={styles.addButtonText}>Add Medication</Text>
                 </TouchableOpacity>
@@ -292,7 +316,6 @@ export default function MedicationSchedulePage() {
     );
 }
 
-// Example styling with your color palette
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -342,7 +365,7 @@ const styles = StyleSheet.create({
         color: "#333",
     },
     readOnlyInput: {
-        backgroundColor: "#e0e0e0", // visually indicate read-only
+        backgroundColor: "#e0e0e0",
     },
     sectionTitle: {
         fontSize: 16,
