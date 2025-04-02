@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import * as Linking from "expo-linking";
 import {
     View,
     Text,
@@ -36,13 +37,14 @@ const Login = () => {
     };
 
     const handleForgotPassword = async () => {
+        const resetPasswordURL = Linking.createURL("/reset_password");
         if (!email) {
             Alert.alert("Forgot Password", "Please enter your email address to reset your password.");
             return;
         }
         setLoading(true);
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: "https://your-app-url.com/reset-password",
+            redirectTo: resetPasswordURL,
         });
         if (error) {
             Alert.alert("Error", error.message);
