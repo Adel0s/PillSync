@@ -98,6 +98,7 @@ export default function MedicationSchedulePage() {
     // New state for notification offset (in minutes)
     const [notificationOffset, setNotificationOffset] = useState(5);
     const [showNotificationPicker, setShowNotificationPicker] = useState(false);
+    const [dosageError, setDosageError] = useState("");
 
     const [patientId, setPatientId] = useState<string | null>(null);
 
@@ -110,6 +111,12 @@ export default function MedicationSchedulePage() {
     }, []);
 
     const handleAddMedication = async () => {
+        if (dosage.trim() === "") {
+            setDosageError("Dosage is required.");
+            return;
+        }
+        setDosageError(""); // Clear error if dosage is valid
+
         if (!patientId) {
             Alert.alert("Error", "No patient ID found. Please log in first.");
             return;
@@ -221,8 +228,18 @@ export default function MedicationSchedulePage() {
                         placeholder="e.g., 2 capsules"
                         placeholderTextColor="#999"
                         value={dosage}
-                        onChangeText={setDosage}
+                        onChangeText={(text) => {
+                            setDosage(text);
+                            if (text.trim() !== "") {
+                                setDosageError("");
+                            }
+                        }}
                     />
+                    {/* Conditionally render error message */}
+                    {dosageError !== "" && (
+                        <Text style={styles.errorText}>{dosageError}</Text>
+                    )}
+
 
                     <Text style={styles.sectionTitle}>How often?</Text>
                     <View style={styles.optionsRow}>
@@ -551,5 +568,11 @@ const styles = StyleSheet.create({
         color: "#03045e",
         fontWeight: "600",
         marginLeft: 8,
+    },
+    errorText: {
+        color: "red",
+        fontSize: 12,
+        marginBottom: 8,
+        marginTop: -8,
     },
 });
