@@ -4,17 +4,17 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    TextInput,
     Switch,
     ActivityIndicator,
     Alert,
     ScrollView,
+    Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
 
-// Type definitions (adjust to your actual fields)
-// Assuming medication_schedule now has reminder_enabled and reminder_threshold
+// Assuming medication_schedule has reminder_enabled and reminder_threshold
 interface Medication {
     id: number;
     name: string | null;
@@ -29,9 +29,8 @@ interface MedicationSchedule {
     duration_days: number;
     initial_quantity: number;
     remaining_quantity: number;
-    reminder_enabled?: boolean;    // new field
-    reminder_threshold?: number;  // new field
-    // joined medication object
+    reminder_enabled?: boolean;
+    reminder_threshold?: number;
     medication?: Medication;
 }
 
@@ -43,10 +42,17 @@ const InventoryDetail: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [schedule, setSchedule] = useState<MedicationSchedule | null>(null);
 
-    // UI states
-    const [newPackageCount, setNewPackageCount] = useState<string>(""); // how many pills to add
+    // Reminder states
     const [isReminderEnabled, setIsReminderEnabled] = useState<boolean>(false);
-    const [reminderThreshold, setReminderThreshold] = useState<string>("");
+    const [reminderThreshold, setReminderThreshold] = useState<number>(0);
+
+    // Add new package: open/close modal + stepper value
+    const [showNewPackageModal, setShowNewPackageModal] = useState(false);
+    const [packageCount, setPackageCount] = useState<number>(1);
+
+    // Remind at X pills: open/close modal + stepper value
+    const [showThresholdModal, setShowThresholdModal] = useState(false);
+    const [thresholdStepper, setThresholdStepper] = useState<number>(1);
 
     useEffect(() => {
         if (id) {
@@ -62,32 +68,28 @@ const InventoryDetail: React.FC = () => {
             .select("*, medication(*)")
             .eq("id", scheduleId)
             .single();
+
         if (error) {
             console.error("Error fetching schedule:", error);
             Alert.alert("Error", "Could not fetch schedule details.");
             setLoading(false);
             return;
         }
-        // cast to our type
         const scheduleData = data as MedicationSchedule;
         setSchedule(scheduleData);
 
-        // initialize local states from schedule
+        // Initialize local states from schedule
         setIsReminderEnabled(scheduleData.reminder_enabled ?? false);
-        setReminderThreshold(
-            scheduleData.reminder_threshold ? scheduleData.reminder_threshold.toString() : ""
-        );
+        setReminderThreshold(scheduleData.reminder_threshold ?? 0);
 
         setLoading(false);
     };
 
-    // Handler: adding a new package of pills
-    const handleAddNewPackage = async () => {
+    // Handler: adding a new package of pills, triggered after user confirms the stepper
+    const handleAddNewPackage = async (toAdd: number) => {
         if (!schedule) return;
-
-        const toAdd = parseInt(newPackageCount, 10);
-        if (isNaN(toAdd) || toAdd <= 0) {
-            Alert.alert("Invalid Input", "Please enter a valid number of pills to add.");
+        if (toAdd <= 0) {
+            Alert.alert("Invalid Input", "Package count must be greater than 0.");
             return;
         }
 
@@ -104,24 +106,22 @@ const InventoryDetail: React.FC = () => {
             console.error("Error updating inventory:", error);
             Alert.alert("Error", "Failed to update inventory.");
         } else {
-            // update local state
             setSchedule(data as MedicationSchedule);
-            setNewPackageCount("");
-            Alert.alert("Success", "Pills added to inventory.");
+            Alert.alert("Success", `Added ${toAdd} pill(s) to inventory.`);
         }
         setLoading(false);
     };
 
-    // Handler: enable/disable reminders & set threshold
+    // Handler: updating reminder settings in the database
     const handleSaveReminders = async () => {
         if (!schedule) return;
 
-        let thresholdNum = parseInt(reminderThreshold, 10);
-        if (isReminderEnabled && (isNaN(thresholdNum) || thresholdNum <= 0)) {
+        let thresholdNum = reminderThreshold;
+        if (isReminderEnabled && thresholdNum <= 0) {
             Alert.alert("Invalid Input", "Please enter a valid threshold number.");
             return;
         }
-        // if reminders are disabled, you might set threshold to null, or keep last value
+        // If reminders are disabled, set threshold to 0 or null
         if (!isReminderEnabled) {
             thresholdNum = 0;
         }
@@ -145,6 +145,19 @@ const InventoryDetail: React.FC = () => {
             Alert.alert("Success", "Reminder settings saved.");
         }
         setLoading(false);
+    };
+
+    // Confirm new package from the stepper
+    const confirmNewPackage = () => {
+        setShowNewPackageModal(false);
+        handleAddNewPackage(packageCount);
+        setPackageCount(1); // reset the stepper
+    };
+
+    // Confirm threshold from the stepper
+    const confirmThreshold = () => {
+        setReminderThreshold(thresholdStepper);
+        setShowThresholdModal(false);
     };
 
     if (loading) {
@@ -174,18 +187,14 @@ const InventoryDetail: React.FC = () => {
 
             {/* Add new package */}
             <Text style={styles.sectionTitle}>Add new package</Text>
-            <View style={styles.inputRow}>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Number of pills to add"
-                    keyboardType="numeric"
-                    value={newPackageCount}
-                    onChangeText={setNewPackageCount}
-                />
-                <TouchableOpacity style={styles.addButton} onPress={handleAddNewPackage}>
-                    <Text style={styles.addButtonText}>Add</Text>
-                </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+                style={styles.showModalButton}
+                onPress={() => setShowNewPackageModal(true)}
+            >
+                <Text style={styles.showModalButtonText}>
+                    Add pills
+                </Text>
+            </TouchableOpacity>
 
             {/* Reminder switch & threshold */}
             <View style={styles.reminderContainer}>
@@ -196,21 +205,117 @@ const InventoryDetail: React.FC = () => {
                 />
             </View>
             {isReminderEnabled && (
-                <View style={styles.reminderThresholdRow}>
-                    <Text style={styles.label}>Remind me at</Text>
-                    <TextInput
-                        style={[styles.input, { flex: 0.5, marginHorizontal: 8 }]}
-                        keyboardType="numeric"
-                        placeholder="Pill count"
-                        value={reminderThreshold}
-                        onChangeText={setReminderThreshold}
-                    />
-                    <Text style={styles.label}>pills</Text>
-                </View>
+                <>
+                    <View style={styles.reminderRow}>
+                        <Text style={styles.label}>Remind me at</Text>
+                        <TouchableOpacity
+                            style={styles.showModalButton}
+                            onPress={() => {
+                                setThresholdStepper(reminderThreshold || 1);
+                                setShowThresholdModal(true);
+                            }}
+                        >
+                            <Text style={styles.showModalButtonText}>
+                                {reminderThreshold > 0 ? reminderThreshold : 1} pill(s)
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
+                        <Text style={styles.saveButtonText}>Save</Text>
+                    </TouchableOpacity>
+                </>
             )}
-            <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
-                <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
+
+            {/* Modal for adding new package */}
+            <Modal
+                visible={showNewPackageModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowNewPackageModal(false)}
+            >
+                <View style={styles.modalBackground}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Add Pills</Text>
+                        <View style={styles.stepperRow}>
+                            <TouchableOpacity
+                                style={styles.stepperButton}
+                                onPress={() => setPackageCount((count) => Math.max(count - 1, 1))}
+                            >
+                                <Text style={styles.stepperButtonText}>-</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.stepperValue}>{packageCount} pill(s)</Text>
+                            <TouchableOpacity
+                                style={styles.stepperButton}
+                                onPress={() => setPackageCount((count) => count + 1)}
+                            >
+                                <Text style={styles.stepperButtonText}>+</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => {
+                                    setShowNewPackageModal(false);
+                                    setPackageCount(1);
+                                }}
+                            >
+                                <Text style={styles.modalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.okButton]}
+                                onPress={confirmNewPackage}
+                            >
+                                <Text style={styles.modalButtonText}>OK</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal for threshold stepper */}
+            <Modal
+                visible={showThresholdModal}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => setShowThresholdModal(false)}
+            >
+                <View style={styles.modalBackground}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>Remind Me At</Text>
+                        <View style={styles.stepperRow}>
+                            <TouchableOpacity
+                                style={styles.stepperButton}
+                                onPress={() =>
+                                    setThresholdStepper((val) => Math.max(val - 1, 1))
+                                }
+                            >
+                                <Text style={styles.stepperButtonText}>-</Text>
+                            </TouchableOpacity>
+                            <Text style={styles.stepperValue}>{thresholdStepper} pill(s)</Text>
+                            <TouchableOpacity
+                                style={styles.stepperButton}
+                                onPress={() => setThresholdStepper((val) => val + 1)}
+                            >
+                                <Text style={styles.stepperButtonText}>+</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.cancelButton]}
+                                onPress={() => setShowThresholdModal(false)}
+                            >
+                                <Text style={styles.modalButtonText}>Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.okButton]}
+                                onPress={confirmThreshold}
+                            >
+                                <Text style={styles.modalButtonText}>OK</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ScrollView>
     );
 };
@@ -248,32 +353,17 @@ const styles = StyleSheet.create({
         fontWeight: "600",
         marginBottom: 8,
     },
-    inputRow: {
-        flexDirection: "row",
-        marginBottom: 24,
-        alignItems: "center",
-    },
-    input: {
-        flex: 1,
-        height: 48,
-        backgroundColor: "#fff",
-        borderColor: "#ccc",
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-    },
-    addButton: {
+    showModalButton: {
         backgroundColor: "#20A0D8",
-        paddingVertical: 14,
-        paddingHorizontal: 16,
+        paddingVertical: 12,
         borderRadius: 8,
-        marginLeft: 8,
         alignItems: "center",
-        justifyContent: "center",
+        marginBottom: 24,
     },
-    addButtonText: {
+    showModalButtonText: {
         color: "#fff",
         fontWeight: "bold",
+        fontSize: 16,
     },
     reminderContainer: {
         flexDirection: "row",
@@ -281,20 +371,90 @@ const styles = StyleSheet.create({
         marginBottom: 16,
         justifyContent: "space-between",
     },
-    reminderThresholdRow: {
+    reminderRow: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 24,
+        marginBottom: 16,
+        justifyContent: "flex-start",
     },
     saveButton: {
         backgroundColor: "#0077b6",
         paddingVertical: 14,
         borderRadius: 8,
         alignItems: "center",
+        marginBottom: 24,
     },
     saveButtonText: {
         color: "#fff",
         fontSize: 18,
+        fontWeight: "bold",
+    },
+    /* Modal Styles */
+    modalBackground: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.3)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    modalContainer: {
+        backgroundColor: "#fff",
+        borderRadius: 16,
+        padding: 20,
+        width: "80%",
+        alignItems: "center",
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: "bold",
+        marginBottom: 16,
+    },
+    stepperRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        marginBottom: 20,
+    },
+    stepperButton: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        backgroundColor: "#0077b6",
+        alignItems: "center",
+        justifyContent: "center",
+        marginHorizontal: 10,
+    },
+    stepperButtonText: {
+        color: "#fff",
+        fontSize: 24,
+        fontWeight: "bold",
+    },
+    stepperValue: {
+        fontSize: 18,
+        fontWeight: "bold",
+        color: "#333",
+        minWidth: 60,
+        textAlign: "center",
+    },
+    modalButtons: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        width: "80%",
+    },
+    modalButton: {
+        flex: 1,
+        alignItems: "center",
+        paddingVertical: 12,
+        marginHorizontal: 4,
+        borderRadius: 8,
+    },
+    cancelButton: {
+        backgroundColor: "#FF3B30",
+    },
+    okButton: {
+        backgroundColor: "#0077b6",
+    },
+    modalButtonText: {
+        color: "#fff",
+        fontSize: 16,
         fontWeight: "bold",
     },
 });
