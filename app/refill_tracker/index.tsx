@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
     View,
@@ -6,11 +6,12 @@ import {
     StyleSheet,
     TouchableOpacity,
     FlatList,
-    ActivityIndicator
+    ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import Header from "../../components/Header"; // Adjust the path based on your project structure
 
 // Type definitions for medication and schedule records
 interface Medication {
@@ -78,7 +79,7 @@ const RefillTracker: React.FC = () => {
         if (error) {
             console.error("Error fetching medication schedules:", error);
         } else {
-            const activeSchedules = (data as MedicationSchedule[]).filter(schedule =>
+            const activeSchedules = (data as MedicationSchedule[]).filter((schedule) =>
                 isWithinTreatmentPeriod(schedule.start_date, schedule.duration_days)
             );
             setSchedules(activeSchedules);
@@ -105,13 +106,9 @@ const RefillTracker: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.safeContainer}>
-            {/* Header with Back Button */}
-            <View style={styles.header}>
-                <TouchableOpacity style={styles.backButton} onPress={() => router.push("/home")}>
-                    <Ionicons name="arrow-back" size={24} color="#fff" />
-                </TouchableOpacity>
-                <Text style={styles.headerTitle}>Your Active Medicines</Text>
-            </View>
+            {/* Reusable Header Component */}
+            <Header title="Your Active Medicines" backRoute="/home" />
+
             {/* Main Content */}
             <View style={styles.container}>
                 {loading ? (
@@ -139,21 +136,6 @@ const styles = StyleSheet.create({
     safeContainer: {
         flex: 1,
         backgroundColor: "#f9f9f9",
-    },
-    header: {
-        flexDirection: "row",
-        alignItems: "center",
-        backgroundColor: "#03045e",
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-    },
-    backButton: {
-        marginRight: 12,
-    },
-    headerTitle: {
-        fontSize: 22,
-        fontWeight: "bold",
-        color: "#fff",
     },
     container: {
         flex: 1,

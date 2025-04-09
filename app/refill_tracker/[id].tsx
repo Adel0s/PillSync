@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+    SafeAreaView,
     View,
     Text,
     StyleSheet,
@@ -13,6 +14,7 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import Header from "../../components/Header"; // Adjust path as needed
 
 // Assuming medication_schedule has reminder_enabled and reminder_threshold
 interface Medication {
@@ -177,152 +179,154 @@ const InventoryDetail: React.FC = () => {
     }
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.title}>{schedule.medication?.name || "Medication"}</Text>
-
-            <Text style={styles.label}>Current inventory</Text>
-            <Text style={styles.value}>
-                {schedule.remaining_quantity ?? 0} pill(s) left
-            </Text>
-
-            {/* Add new package */}
-            <Text style={styles.sectionTitle}>Add new package</Text>
-            <TouchableOpacity
-                style={styles.showModalButton}
-                onPress={() => setShowNewPackageModal(true)}
-            >
-                <Text style={styles.showModalButtonText}>
-                    Add pills
+        <SafeAreaView style={styles.safeContainer}>
+            <Header title="Inventory" backRoute="/refill_tracker" />
+            <ScrollView contentContainerStyle={styles.container}>
+                <Text style={styles.title}>
+                    {schedule.medication?.name || "Medication"}
                 </Text>
-            </TouchableOpacity>
 
-            {/* Reminder switch & threshold */}
-            <View style={styles.reminderContainer}>
-                <Text style={styles.label}>Remind me to refill</Text>
-                <Switch
-                    value={isReminderEnabled}
-                    onValueChange={setIsReminderEnabled}
-                />
-            </View>
-            {isReminderEnabled && (
-                <>
-                    <View style={styles.reminderRow}>
-                        <Text style={styles.label}>Remind me at</Text>
-                        <TouchableOpacity
-                            style={styles.showModalButton}
-                            onPress={() => {
-                                setThresholdStepper(reminderThreshold || 1);
-                                setShowThresholdModal(true);
-                            }}
-                        >
-                            <Text style={styles.showModalButtonText}>
-                                {reminderThreshold > 0 ? reminderThreshold : 1} pill(s)
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
-                        <Text style={styles.saveButtonText}>Save</Text>
-                    </TouchableOpacity>
-                </>
-            )}
+                <Text style={styles.label}>Current inventory</Text>
+                <Text style={styles.value}>
+                    {schedule.remaining_quantity ?? 0} pill(s) left
+                </Text>
 
-            {/* Modal for adding new package */}
-            <Modal
-                visible={showNewPackageModal}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setShowNewPackageModal(false)}
-            >
-                <View style={styles.modalBackground}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Add Pills</Text>
-                        <View style={styles.stepperRow}>
+                {/* Add new package */}
+                <Text style={styles.sectionTitle}>Add new package</Text>
+                <TouchableOpacity
+                    style={styles.showModalButton}
+                    onPress={() => setShowNewPackageModal(true)}
+                >
+                    <Text style={styles.showModalButtonText}>Add pills</Text>
+                </TouchableOpacity>
+
+                {/* Reminder switch & threshold */}
+                <View style={styles.reminderContainer}>
+                    <Text style={styles.label}>Remind me to refill</Text>
+                    <Switch value={isReminderEnabled} onValueChange={setIsReminderEnabled} />
+                </View>
+                {isReminderEnabled && (
+                    <>
+                        <View style={styles.reminderRow}>
+                            <Text style={styles.label}>Remind me at</Text>
                             <TouchableOpacity
-                                style={styles.stepperButton}
-                                onPress={() => setPackageCount((count) => Math.max(count - 1, 1))}
-                            >
-                                <Text style={styles.stepperButtonText}>-</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.stepperValue}>{packageCount} pill(s)</Text>
-                            <TouchableOpacity
-                                style={styles.stepperButton}
-                                onPress={() => setPackageCount((count) => count + 1)}
-                            >
-                                <Text style={styles.stepperButtonText}>+</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.cancelButton]}
+                                style={styles.showModalButton}
                                 onPress={() => {
-                                    setShowNewPackageModal(false);
-                                    setPackageCount(1);
+                                    setThresholdStepper(reminderThreshold || 1);
+                                    setShowThresholdModal(true);
                                 }}
                             >
-                                <Text style={styles.modalButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.okButton]}
-                                onPress={confirmNewPackage}
-                            >
-                                <Text style={styles.modalButtonText}>OK</Text>
+                                <Text style={styles.showModalButtonText}>
+                                    {reminderThreshold > 0 ? reminderThreshold : 1} pill(s)
+                                </Text>
                             </TouchableOpacity>
                         </View>
-                    </View>
-                </View>
-            </Modal>
+                        <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
+                            <Text style={styles.saveButtonText}>Save</Text>
+                        </TouchableOpacity>
+                    </>
+                )}
 
-            {/* Modal for threshold stepper */}
-            <Modal
-                visible={showThresholdModal}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setShowThresholdModal(false)}
-            >
-                <View style={styles.modalBackground}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>Remind Me At</Text>
-                        <View style={styles.stepperRow}>
-                            <TouchableOpacity
-                                style={styles.stepperButton}
-                                onPress={() =>
-                                    setThresholdStepper((val) => Math.max(val - 1, 1))
-                                }
-                            >
-                                <Text style={styles.stepperButtonText}>-</Text>
-                            </TouchableOpacity>
-                            <Text style={styles.stepperValue}>{thresholdStepper} pill(s)</Text>
-                            <TouchableOpacity
-                                style={styles.stepperButton}
-                                onPress={() => setThresholdStepper((val) => val + 1)}
-                            >
-                                <Text style={styles.stepperButtonText}>+</Text>
-                            </TouchableOpacity>
-                        </View>
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.cancelButton]}
-                                onPress={() => setShowThresholdModal(false)}
-                            >
-                                <Text style={styles.modalButtonText}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.modalButton, styles.okButton]}
-                                onPress={confirmThreshold}
-                            >
-                                <Text style={styles.modalButtonText}>OK</Text>
-                            </TouchableOpacity>
+                {/* Modal for adding new package */}
+                <Modal
+                    visible={showNewPackageModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowNewPackageModal(false)}
+                >
+                    <View style={styles.modalBackground}>
+                        <View style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>Add Pills</Text>
+                            <View style={styles.stepperRow}>
+                                <TouchableOpacity
+                                    style={styles.stepperButton}
+                                    onPress={() => setPackageCount((count) => Math.max(count - 1, 1))}
+                                >
+                                    <Text style={styles.stepperButtonText}>-</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.stepperValue}>{packageCount} pill(s)</Text>
+                                <TouchableOpacity
+                                    style={styles.stepperButton}
+                                    onPress={() => setPackageCount((count) => count + 1)}
+                                >
+                                    <Text style={styles.stepperButtonText}>+</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={() => {
+                                        setShowNewPackageModal(false);
+                                        setPackageCount(1);
+                                    }}
+                                >
+                                    <Text style={styles.modalButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.okButton]}
+                                    onPress={confirmNewPackage}
+                                >
+                                    <Text style={styles.modalButtonText}>OK</Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </Modal>
-        </ScrollView>
+                </Modal>
+
+                {/* Modal for threshold stepper */}
+                <Modal
+                    visible={showThresholdModal}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={() => setShowThresholdModal(false)}
+                >
+                    <View style={styles.modalBackground}>
+                        <View style={styles.modalContainer}>
+                            <Text style={styles.modalTitle}>Remind Me At</Text>
+                            <View style={styles.stepperRow}>
+                                <TouchableOpacity
+                                    style={styles.stepperButton}
+                                    onPress={() => setThresholdStepper((val) => Math.max(val - 1, 1))}
+                                >
+                                    <Text style={styles.stepperButtonText}>-</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.stepperValue}>{thresholdStepper} pill(s)</Text>
+                                <TouchableOpacity
+                                    style={styles.stepperButton}
+                                    onPress={() => setThresholdStepper((val) => val + 1)}
+                                >
+                                    <Text style={styles.stepperButtonText}>+</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.cancelButton]}
+                                    onPress={() => setShowThresholdModal(false)}
+                                >
+                                    <Text style={styles.modalButtonText}>Cancel</Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                    style={[styles.modalButton, styles.okButton]}
+                                    onPress={confirmThreshold}
+                                >
+                                    <Text style={styles.modalButtonText}>OK</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 
 export default InventoryDetail;
 
 const styles = StyleSheet.create({
+    safeContainer: {
+        flex: 1,
+        backgroundColor: "#f9f9f9",
+    },
     container: {
         padding: 16,
         backgroundColor: "#f9f9f9",
