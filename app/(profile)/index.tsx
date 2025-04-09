@@ -15,6 +15,8 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../../lib/supabase";
 import { useAuth } from "../../context/AuthProvider";
+import * as FileSystem from 'expo-file-system';
+import { decode } from 'base64-arraybuffer'
 
 const calculateAge = (dobString: string) => {
     const birthDate = new Date(dobString);
@@ -47,6 +49,8 @@ const Profile = () => {
         if (user) {
             setEditableName(user.user_metadata?.full_name || "");
             setEditablePhone(user.user_metadata?.phone_number || "");
+            // Optionally, load the avatar from user metadata:
+            setAvatarUri(user.user_metadata?.avatar_url || null);
         }
     }, [user]);
 
@@ -61,17 +65,18 @@ const Profile = () => {
 
     const uploadAvatar = async (uri: string) => {
         try {
-            const response = await fetch(uri);
-            const blob = await response.blob();
+            const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
             // Extract file extension (default to jpg)
             const fileExt = uri.split('.').pop() || "jpg";
-            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-            const { data, error } = await supabase.storage.from("avatars").upload(fileName, blob, {
+            const fileName = `${user.id}-${new Date().getTime()}.${fileExt}`;
+            console.log("File name :", fileName);
+            const { data, error } = await supabase.storage.from("avatars").upload(fileName, decode(base64), {
                 cacheControl: "3600",
-                upsert: false,
+                upsert: true,
             });
             if (error) {
                 Alert.alert("Upload Error", error.message);
+                console.log("Upload Error :", error);
                 return null;
             }
             const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(fileName);
@@ -92,14 +97,15 @@ const Profile = () => {
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [1, 1],
             quality: 0.5,
         });
 
+
         if (!result.canceled && result.assets && result.assets.length > 0) {
-            // Upload the image to Supabase Storage
+            console.log("ImagePicker result:", result.assets[0].uri);
             const publicUrl = await uploadAvatar(result.assets[0].uri);
             if (publicUrl) {
                 setAvatarUri(publicUrl);
@@ -146,13 +152,16 @@ const Profile = () => {
 
     return (
         <SafeAreaView style={styles.container}>
+            {/* Header with Back Button */}
             <View style={styles.header}>
                 <TouchableOpacity style={styles.backButton} onPress={() => router.push("/home")}>
                     <Ionicons name="arrow-back" size={24} color="#fff" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Profile</Text>
             </View>
+
             <ScrollView contentContainerStyle={styles.scrollContainer}>
+                {/* Top Section with Avatar */}
                 <View style={styles.topSection}>
                     <Avatar
                         size={90}
@@ -172,7 +181,7 @@ const Profile = () => {
                         <Text style={styles.fieldLabel}>Name</Text>
                         <View style={styles.fieldBox}>
                             <TextInput
-                                style={[styles.fieldInput, styles.fieldEditable]}
+                                style={[styles.fieldInput]}
                                 value={editableName}
                                 onChangeText={setEditableName}
                                 placeholder="Full Name"
@@ -187,7 +196,7 @@ const Profile = () => {
                         <Text style={styles.fieldLabel}>Phone Number</Text>
                         <View style={styles.fieldBox}>
                             <TextInput
-                                style={[styles.fieldInput, styles.fieldEditable]}
+                                style={[styles.fieldInput]}
                                 value={editablePhone}
                                 onChangeText={setEditablePhone}
                                 placeholder="Phone Number"
@@ -201,41 +210,49 @@ const Profile = () => {
                     {/* Read-Only Email */}
                     <View style={styles.fieldGroup}>
                         <Text style={styles.fieldLabel}>Email</Text>
-                        <TextInput
-                            style={[styles.fieldInput, styles.fieldReadOnly]}
-                            value={email}
-                            editable={false}
-                        />
+                        <View style={[styles.fieldBox, styles.fieldReadOnly]}>
+                            <TextInput
+                                style={styles.fieldInput}
+                                value={email}
+                                editable={false}
+                            />
+                        </View>
                     </View>
 
                     {/* Read-Only Role */}
                     <View style={styles.fieldGroup}>
                         <Text style={styles.fieldLabel}>Role</Text>
-                        <TextInput
-                            style={[styles.fieldInput, styles.fieldReadOnly]}
-                            value={role}
-                            editable={false}
-                        />
+                        <View style={[styles.fieldBox, styles.fieldReadOnly]}>
+                            <TextInput
+                                style={[styles.fieldInput, styles.fieldReadOnly]}
+                                value={role}
+                                editable={false}
+                            />
+                        </View>
                     </View>
 
                     {/* Read-Only Date of Birth */}
                     <View style={styles.fieldGroup}>
                         <Text style={styles.fieldLabel}>Date of Birth</Text>
-                        <TextInput
-                            style={[styles.fieldInput, styles.fieldReadOnly]}
-                            value={dob}
-                            editable={false}
-                        />
+                        <View style={[styles.fieldBox, styles.fieldReadOnly]}>
+                            <TextInput
+                                style={[styles.fieldInput, styles.fieldReadOnly]}
+                                value={dob}
+                                editable={false}
+                            />
+                        </View>
                     </View>
 
                     {/* Read-Only Age */}
                     <View style={styles.fieldGroup}>
                         <Text style={styles.fieldLabel}>Age</Text>
-                        <TextInput
-                            style={[styles.fieldInput, styles.fieldReadOnly]}
-                            value={age}
-                            editable={false}
-                        />
+                        <View style={[styles.fieldBox, styles.fieldReadOnly]}>
+                            <TextInput
+                                style={[styles.fieldInput, styles.fieldReadOnly]}
+                                value={age}
+                                editable={false}
+                            />
+                        </View>
                     </View>
                 </View>
 
@@ -337,7 +354,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: "#03045e",
     },
-    fieldEditable: {},
     fieldReadOnly: {
         backgroundColor: "#e0e0e0",
     },
