@@ -35,9 +35,21 @@ interface MedicationSchedule {
     prescription_date?: string;
     instructions?: string;
     created_at?: string;
-    // the joined medication object (if available)
+    status?: string; // e.g., "active", "completed", "cancelled"
+    // The joined medication object (if available)
     medication?: Medication;
 }
+
+// Helper function to determine if the treatment period is still valid.
+const isWithinTreatmentPeriod = (
+    start_date: string,
+    duration_days: number
+): boolean => {
+    const startDate = new Date(start_date);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + duration_days);
+    return new Date() <= endDate;
+};
 
 const RefillTracker: React.FC = () => {
     const [schedules, setSchedules] = useState<MedicationSchedule[]>([]);
@@ -49,6 +61,8 @@ const RefillTracker: React.FC = () => {
     }, []);
 
     // Fetch the medication schedules for the logged-in patient.
+    // Only schedules that are explicitly marked as active and still within
+    // the treatment period will be displayed.
     const fetchSchedules = async () => {
         setLoading(true);
         // Retrieve the current logged-in user
@@ -59,27 +73,34 @@ const RefillTracker: React.FC = () => {
             return;
         }
         const userId = authData.user.id;
-        // Query the medication_schedule table joined with medication details
+        // Query the medication_schedule table, filtering by patient_id and active status
         const { data, error } = await supabase
             .from("medication_schedule")
             .select("*, medication(*)")
-            .eq("patient_id", userId);
+            .eq("patient_id", userId)
+            .eq("status", "active");
         if (error) {
             console.error("Error fetching medication schedules:", error);
         } else {
-            setSchedules(data as MedicationSchedule[]);
+            // Double-check that the treatment period is still valid.
+            const activeSchedules = (data as MedicationSchedule[]).filter(
+                (schedule) =>
+                    isWithinTreatmentPeriod(schedule.start_date, schedule.duration_days)
+            );
+            setSchedules(activeSchedules);
         }
         setLoading(false);
     };
 
-    // Render each medication schedule as a card
+    // Render each medication schedule as a card.
     const renderItem = ({ item }: { item: MedicationSchedule }) => {
-        // Use the joined medication object, or fallback if missing
+        // Use the joined medication object (if available), or use a fallback.
         const medName = item.medication?.name || "Unnamed Medication";
         const remaining = item.remaining_quantity || 0;
         return (
             <TouchableOpacity
                 style={styles.card}
+                // dynamic route to the schedule details page
                 onPress={() => router.push(`/refill_tracker/${item.id}`)}
             >
                 <Text style={styles.medName}>{medName}</Text>
@@ -90,13 +111,15 @@ const RefillTracker: React.FC = () => {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.header}>Your Medicines</Text>
+            <Text style={styles.header}>Your Active Medicines</Text>
             {loading ? (
                 <View style={styles.center}>
                     <ActivityIndicator size="large" color="#0077b6" />
                 </View>
             ) : schedules.length === 0 ? (
-                <Text style={styles.noSchedules}>No medications scheduled yet.</Text>
+                <Text style={styles.noSchedules}>
+                    No active medications scheduled yet.
+                </Text>
             ) : (
                 <FlatList
                     data={schedules}
