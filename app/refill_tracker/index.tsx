@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import {
+    SafeAreaView,
     View,
     Text,
     StyleSheet,
     TouchableOpacity,
     FlatList,
-    ActivityIndicator,
+    ActivityIndicator
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
@@ -37,11 +38,10 @@ interface MedicationSchedule {
     instructions?: string;
     created_at?: string;
     status?: string; // e.g., "active", "completed", "cancelled"
-    // The joined medication object (if available)
     medication?: Medication;
 }
 
-// Helper function to determine if the treatment period is still valid.
+// Helper to check if the treatment period is valid.
 const isWithinTreatmentPeriod = (
     start_date: string,
     duration_days: number
@@ -61,11 +61,8 @@ const RefillTracker: React.FC = () => {
         fetchSchedules();
     }, []);
 
-    // Fetch the medication schedules for the logged-in patient.
-    // Only schedules that are explicitly marked as active and still within the treatment period will be displayed.
     const fetchSchedules = async () => {
         setLoading(true);
-        // Retrieve the current logged-in user
         const { data: authData, error: authError } = await supabase.auth.getUser();
         if (authError || !authData?.user) {
             console.error("Error fetching user:", authError);
@@ -73,7 +70,6 @@ const RefillTracker: React.FC = () => {
             return;
         }
         const userId = authData.user.id;
-        // Query the medication_schedule table, filtering by patient_id and active status
         const { data, error } = await supabase
             .from("medication_schedule")
             .select("*, medication(*)")
@@ -82,19 +78,15 @@ const RefillTracker: React.FC = () => {
         if (error) {
             console.error("Error fetching medication schedules:", error);
         } else {
-            // Double-check that the treatment period is still valid.
-            const activeSchedules = (data as MedicationSchedule[]).filter(
-                (schedule) =>
-                    isWithinTreatmentPeriod(schedule.start_date, schedule.duration_days)
+            const activeSchedules = (data as MedicationSchedule[]).filter(schedule =>
+                isWithinTreatmentPeriod(schedule.start_date, schedule.duration_days)
             );
             setSchedules(activeSchedules);
         }
         setLoading(false);
     };
 
-    // Render each medication schedule as a card.
     const renderItem = ({ item }: { item: MedicationSchedule }) => {
-        // Use the joined medication object (if available), or use a fallback.
         const medName = item.medication?.name || "Unnamed Medication";
         const remaining = item.remaining_quantity || 0;
         return (
@@ -112,40 +104,61 @@ const RefillTracker: React.FC = () => {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.header}>Your Active Medicines</Text>
-            {loading ? (
-                <View style={styles.center}>
-                    <ActivityIndicator size="large" color="#0077b6" />
-                </View>
-            ) : schedules.length === 0 ? (
-                <Text style={styles.noSchedules}>
-                    No active medications scheduled yet.
-                </Text>
-            ) : (
-                <FlatList
-                    data={schedules}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={renderItem}
-                    contentContainerStyle={styles.listContainer}
-                />
-            )}
-        </View>
+        <SafeAreaView style={styles.safeContainer}>
+            {/* Header with Back Button */}
+            <View style={styles.header}>
+                <TouchableOpacity style={styles.backButton} onPress={() => router.push("/home")}>
+                    <Ionicons name="arrow-back" size={24} color="#fff" />
+                </TouchableOpacity>
+                <Text style={styles.headerTitle}>Your Active Medicines</Text>
+            </View>
+            {/* Main Content */}
+            <View style={styles.container}>
+                {loading ? (
+                    <View style={styles.center}>
+                        <ActivityIndicator size="large" color="#0077b6" />
+                    </View>
+                ) : schedules.length === 0 ? (
+                    <Text style={styles.noSchedules}>
+                        No active medications scheduled yet.
+                    </Text>
+                ) : (
+                    <FlatList
+                        data={schedules}
+                        keyExtractor={(item) => item.id.toString()}
+                        renderItem={renderItem}
+                        contentContainerStyle={styles.listContainer}
+                    />
+                )}
+            </View>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    safeContainer: {
         flex: 1,
-        backgroundColor: "#f9f9f9", // Main background remains as requested
-        padding: 16,
+        backgroundColor: "#f9f9f9",
     },
     header: {
-        fontSize: 26,
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#03045e",
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+    },
+    backButton: {
+        marginRight: 12,
+    },
+    headerTitle: {
+        fontSize: 22,
         fontWeight: "bold",
-        color: "#03045e", // Dark blue for header text
-        marginBottom: 20,
-        textAlign: "center",
+        color: "#fff",
+    },
+    container: {
+        flex: 1,
+        padding: 16,
+        backgroundColor: "#f9f9f9",
     },
     center: {
         flex: 1,
@@ -154,7 +167,7 @@ const styles = StyleSheet.create({
     },
     noSchedules: {
         fontSize: 18,
-        color: "#0077b6", // Blue for alerts
+        color: "#0077b6",
         textAlign: "center",
         marginTop: 20,
     },
@@ -164,12 +177,12 @@ const styles = StyleSheet.create({
     card: {
         flexDirection: "row",
         alignItems: "center",
-        backgroundColor: "#ffffff", // White card for a clean look
+        backgroundColor: "#ffffff",
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: "#90e0ef", // Soft light blue border for subtle accent
+        borderColor: "#90e0ef",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
@@ -185,11 +198,11 @@ const styles = StyleSheet.create({
     medName: {
         fontSize: 20,
         fontWeight: "600",
-        color: "#03045e", // Dark blue for medication name
+        color: "#03045e",
     },
     remaining: {
         fontSize: 16,
-        color: "#0077b6", // Blue for remaining count
+        color: "#0077b6",
         marginTop: 4,
     },
 });

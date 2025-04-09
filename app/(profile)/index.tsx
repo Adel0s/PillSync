@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
         textAlign: "left",
         fontSize: 22,
         fontWeight: "bold",
-        color: "#caf0f8",
+        color: "#fff",
     },
     /* Top Section */
     topSection: {
