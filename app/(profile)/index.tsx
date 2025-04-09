@@ -103,7 +103,6 @@ const Profile = () => {
             quality: 0.5,
         });
 
-
         if (!result.canceled && result.assets && result.assets.length > 0) {
             console.log("ImagePicker result:", result.assets[0].uri);
             const publicUrl = await uploadAvatar(result.assets[0].uri);

@@ -205,13 +205,6 @@ export default function MedicationSchedulePage() {
                         onChangeText={setMedName}
                     />
 
-                    <Text style={styles.label}>Medication Strength</Text>
-                    <TextInput
-                        style={[styles.input, styles.readOnlyInput]}
-                        value={medStrength}
-                        editable={false}
-                    />
-
                     <Text style={styles.label}>Number of pills</Text>
                     <TextInput
                         style={styles.input}
