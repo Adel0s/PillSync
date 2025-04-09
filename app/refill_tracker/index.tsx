@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
+import { Ionicons } from "@expo/vector-icons";
 
 // Type definitions for medication and schedule records
 interface Medication {
@@ -61,8 +62,7 @@ const RefillTracker: React.FC = () => {
     }, []);
 
     // Fetch the medication schedules for the logged-in patient.
-    // Only schedules that are explicitly marked as active and still within
-    // the treatment period will be displayed.
+    // Only schedules that are explicitly marked as active and still within the treatment period will be displayed.
     const fetchSchedules = async () => {
         setLoading(true);
         // Retrieve the current logged-in user
@@ -100,11 +100,13 @@ const RefillTracker: React.FC = () => {
         return (
             <TouchableOpacity
                 style={styles.card}
-                // dynamic route to the schedule details page
                 onPress={() => router.push(`/refill_tracker/${item.id}`)}
             >
-                <Text style={styles.medName}>{medName}</Text>
-                <Text style={styles.remaining}>Remaining Pills: {remaining}</Text>
+                <Ionicons name="medkit" size={30} color="#00b4d8" style={styles.icon} />
+                <View style={styles.cardContent}>
+                    <Text style={styles.medName}>{medName}</Text>
+                    <Text style={styles.remaining}>Remaining Pills: {remaining}</Text>
+                </View>
             </TouchableOpacity>
         );
     };
@@ -135,13 +137,15 @@ const RefillTracker: React.FC = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#f9f9f9",
+        backgroundColor: "#f9f9f9", // Main background remains as requested
         padding: 16,
     },
     header: {
-        fontSize: 24,
+        fontSize: 26,
         fontWeight: "bold",
-        marginBottom: 16,
+        color: "#03045e", // Dark blue for header text
+        marginBottom: 20,
+        textAlign: "center",
     },
     center: {
         flex: 1,
@@ -150,7 +154,7 @@ const styles = StyleSheet.create({
     },
     noSchedules: {
         fontSize: 18,
-        color: "#555",
+        color: "#0077b6", // Blue for alerts
         textAlign: "center",
         marginTop: 20,
     },
@@ -158,24 +162,35 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     card: {
-        backgroundColor: "#fff",
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#ffffff", // White card for a clean look
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: "#90e0ef", // Soft light blue border for subtle accent
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.08,
         shadowRadius: 4,
-        elevation: 3,
+        elevation: 2,
+    },
+    icon: {
+        marginRight: 12,
+    },
+    cardContent: {
+        flex: 1,
     },
     medName: {
         fontSize: 20,
-        fontWeight: "bold",
+        fontWeight: "600",
+        color: "#03045e", // Dark blue for medication name
     },
     remaining: {
         fontSize: 16,
-        color: "#555",
-        marginTop: 8,
+        color: "#0077b6", // Blue for remaining count
+        marginTop: 4,
     },
 });
 

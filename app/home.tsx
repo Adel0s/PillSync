@@ -138,7 +138,7 @@ export default function Home() {
         // router.push("/history")
     };
     const handleRefillTracker = () => {
-        router.push("/(refill_tracker)")
+        router.push("/refill_tracker")
     };
 
     const renderEmptyList = () => (
