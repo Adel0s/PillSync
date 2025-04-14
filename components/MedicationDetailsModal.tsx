@@ -33,7 +33,7 @@ const MedicationDetailsModal = ({ isVisible, onClose, medication }: Props) => {
                     <Detail label="Side Effects" value={medication.side_effect || "N/A"} />
                 </ScrollView>
                 <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <Text style={styles.closeButtonText}>Închide</Text>
+                    <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
             </View>
         </Modal>

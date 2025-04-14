@@ -1,8 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import {
+    View,
+    Text,
+    StyleSheet,
+    TouchableOpacity,
+    Alert,
+    Pressable,
+} from "react-native";
 import { supabase } from "../lib/supabase";
 import MedicationDetailsModal from "./MedicationDetailsModal";
-import { Pressable } from "react-native";
 
 interface ScheduleItemProps {
     item: any;
@@ -18,12 +24,8 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
         console.log("Take pill", item);
         if (taken) return;
         try {
-            // Insert a pill log record
             const { error: logError } = await supabase.from("pill_logs").insert([
-                {
-                    schedule_id: id,
-                    status: "taken",
-                },
+                { schedule_id: id, status: "taken" },
             ]);
             if (logError) throw logError;
 
@@ -34,11 +36,10 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
                 .eq("id", id)
                 .single();
             if (fetchError) throw fetchError;
+
             const currentRemaining = scheduleData.remaining_quantity || 0;
-            console.log("currentRemaining", currentRemaining);
             if (currentRemaining <= 0) return;
             const newRemaining = currentRemaining - 1;
-            console.log("newRemaining", newRemaining);
 
             // Update the remaining_quantity
             const { error: updateError } = await supabase
@@ -49,7 +50,6 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             else console.log(id);
 
             setTaken(true);
-            console.log('Side effects: ', medication.side_effect)
             if (medication?.side_effect) {
                 Alert.alert(
                     "⚠️ Efecte adverse posibile",
@@ -92,7 +92,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             <TouchableOpacity
                 style={[styles.takeButton, taken && styles.takeButtonTaken]}
                 onPress={(e) => {
-                    e.stopPropagation(); // previne deschiderea modalului
+                    e.stopPropagation(); // prevent modal from opening
                     handleTake();
                 }}
                 disabled={taken}
