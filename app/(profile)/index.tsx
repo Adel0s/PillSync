@@ -279,7 +279,7 @@ const Profile = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#caf0f8",
+        backgroundColor: "#f9f9f9",
     },
     scrollContainer: {
         paddingHorizontal: 16,
@@ -328,6 +328,13 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         marginBottom: 20,
+        borderWidth: 1,
+        borderColor: "#90e0ef",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+        elevation: 2,
     },
     fieldGroup: {
         marginBottom: 12,

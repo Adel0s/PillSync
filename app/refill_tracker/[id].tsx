@@ -87,7 +87,16 @@ const InventoryDetail: React.FC = () => {
         setLoading(false);
     };
 
-    // Handler: adding a new package of pills, triggered after user confirms the stepper
+    // New handler for toggle changes
+    const handleToggleReminder = (value: boolean) => {
+        setIsReminderEnabled(value);
+        // If turning off, reset the threshold to 0 so we can update it to null in DB
+        if (!value) {
+            setReminderThreshold(0);
+        }
+    };
+
+    // Handler: adding a new package of pills
     const handleAddNewPackage = async (toAdd: number) => {
         if (!schedule) return;
         if (toAdd <= 0) {
@@ -118,14 +127,10 @@ const InventoryDetail: React.FC = () => {
     const handleSaveReminders = async () => {
         if (!schedule) return;
 
-        let thresholdNum = reminderThreshold;
-        if (isReminderEnabled && thresholdNum <= 0) {
+        // If the reminder is enabled, ensure the threshold is valid
+        if (isReminderEnabled && reminderThreshold <= 0) {
             Alert.alert("Invalid Input", "Please enter a valid threshold number.");
             return;
-        }
-        // If reminders are disabled, set threshold to 0 or null
-        if (!isReminderEnabled) {
-            thresholdNum = 0;
         }
 
         setLoading(true);
@@ -133,7 +138,8 @@ const InventoryDetail: React.FC = () => {
             .from("medication_schedule")
             .update({
                 reminder_enabled: isReminderEnabled,
-                reminder_threshold: thresholdNum || null,
+                // If reminders are disabled, update the threshold to null, otherwise save the value.
+                reminder_threshold: isReminderEnabled ? reminderThreshold : null,
             })
             .eq("id", schedule.id)
             .select()
@@ -203,7 +209,7 @@ const InventoryDetail: React.FC = () => {
                 {/* Reminder switch & threshold */}
                 <View style={styles.reminderContainer}>
                     <Text style={styles.label}>Remind me to refill</Text>
-                    <Switch value={isReminderEnabled} onValueChange={setIsReminderEnabled} />
+                    <Switch value={isReminderEnabled} onValueChange={handleToggleReminder} />
                 </View>
                 {isReminderEnabled && (
                     <>
@@ -286,7 +292,9 @@ const InventoryDetail: React.FC = () => {
                             <View style={styles.stepperRow}>
                                 <TouchableOpacity
                                     style={styles.stepperButton}
-                                    onPress={() => setThresholdStepper((val) => Math.max(val - 1, 1))}
+                                    onPress={() =>
+                                        setThresholdStepper((val) => Math.max(val - 1, 1))
+                                    }
                                 >
                                     <Text style={styles.stepperButtonText}>-</Text>
                                 </TouchableOpacity>
@@ -421,7 +429,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: "#0077b6",
+        backgroundColor: "#000", // 666, 0077b6
         alignItems: "center",
         justifyContent: "center",
         marginHorizontal: 10,
