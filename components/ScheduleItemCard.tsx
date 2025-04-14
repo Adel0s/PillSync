@@ -1,6 +1,8 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { supabase } from "../lib/supabase";
+import MedicationDetailsModal from "./MedicationDetailsModal";
+import { Pressable } from "react-native";
 
 interface ScheduleItemProps {
     item: any;
@@ -10,6 +12,7 @@ interface ScheduleItemProps {
 const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
     const { medication, medication_schedule_times, dosage, id, isTaken: initialTaken } = item;
     const [taken, setTaken] = useState(initialTaken);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     const handleTake = async () => {
         console.log("Take pill", item);
@@ -46,14 +49,28 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             else console.log(id);
 
             setTaken(true);
-            onPillTaken();
+            console.log('Side effects: ', medication.side_effect)
+            if (medication?.side_effect) {
+                Alert.alert(
+                    "⚠️ Efecte adverse posibile",
+                    medication.side_effect,
+                    [{ text: "OK", onPress: () => onPillTaken() }],
+                    { cancelable: true }
+                );
+            } else {
+                onPillTaken();
+            }
         } catch (e: any) {
             console.error(e);
         }
     };
 
     return (
-        <View style={styles.scheduleItem}>
+        <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.scheduleItem}
+            onPress={() => setShowDetailsModal(true)}
+        >
             <View style={{ flex: 1 }}>
                 <Text style={styles.scheduleItemTitle}>
                     {medication?.name || "Medication"}
@@ -71,16 +88,27 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
                     <Text style={styles.scheduleItemTime}>No times set</Text>
                 )}
             </View>
+
             <TouchableOpacity
                 style={[styles.takeButton, taken && styles.takeButtonTaken]}
-                onPress={handleTake}
+                onPress={(e) => {
+                    e.stopPropagation(); // previne deschiderea modalului
+                    handleTake();
+                }}
                 disabled={taken}
             >
                 <Text style={[styles.takeButtonText, taken && styles.takeButtonTextTaken]}>
                     {taken ? "Taken" : "Take"}
                 </Text>
             </TouchableOpacity>
-        </View>
+
+            <MedicationDetailsModal
+                isVisible={showDetailsModal}
+                onClose={() => setShowDetailsModal(false)}
+                medication={medication}
+            />
+        </TouchableOpacity>
+
     );
 };
 

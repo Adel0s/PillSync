@@ -59,14 +59,24 @@ export default function Home() {
             const { data, error } = await supabase
                 .from("medication_schedule")
                 .select(
-                    `id,
-          start_date,
-          duration_days,
-          dosage,
-          instructions,
-          remaining_quantity,
-          medication:medication_id ( name ),
-          medication_schedule_times ( id, time )`
+                    `
+                    id,
+                    start_date,
+                    duration_days,
+                    dosage,
+                    instructions,
+                    remaining_quantity,
+                    medication:medication_id ( id,
+                                                name,
+                                                active_substance,
+                                                quantity,
+                                                nr_of_pills,
+                                                description,
+                                                contraindications,
+                                                side_effect,
+                                                barcode ),
+                    medication_schedule_times ( id, time )
+                    `
                 )
                 .eq("patient_id", user.id);
             if (error) {
