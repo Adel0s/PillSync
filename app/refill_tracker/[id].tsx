@@ -212,26 +212,24 @@ const InventoryDetail: React.FC = () => {
                     <Switch value={isReminderEnabled} onValueChange={handleToggleReminder} />
                 </View>
                 {isReminderEnabled && (
-                    <>
-                        <View style={styles.reminderRow}>
-                            <Text style={styles.label}>Remind me at</Text>
-                            <TouchableOpacity
-                                style={styles.showModalButton}
-                                onPress={() => {
-                                    setThresholdStepper(reminderThreshold || 1);
-                                    setShowThresholdModal(true);
-                                }}
-                            >
-                                <Text style={styles.showModalButtonText}>
-                                    {reminderThreshold > 0 ? reminderThreshold : 1} pill(s)
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
-                            <Text style={styles.saveButtonText}>Save</Text>
+                    <View style={styles.reminderRow}>
+                        <Text style={styles.label}>Remind me at</Text>
+                        <TouchableOpacity
+                            style={styles.showModalButton}
+                            onPress={() => {
+                                setThresholdStepper(reminderThreshold || 1);
+                                setShowThresholdModal(true);
+                            }}
+                        >
+                            <Text style={styles.showModalButtonText}>
+                                {reminderThreshold > 0 ? reminderThreshold : 1} pill(s)
+                            </Text>
                         </TouchableOpacity>
-                    </>
+                    </View>
                 )}
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
+                    <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
 
                 {/* Modal for adding new package */}
                 <Modal
@@ -246,7 +244,9 @@ const InventoryDetail: React.FC = () => {
                             <View style={styles.stepperRow}>
                                 <TouchableOpacity
                                     style={styles.stepperButton}
-                                    onPress={() => setPackageCount((count) => Math.max(count - 1, 1))}
+                                    onPress={() =>
+                                        setPackageCount((count) => Math.max(count - 1, 1))
+                                    }
                                 >
                                     <Text style={styles.stepperButtonText}>-</Text>
                                 </TouchableOpacity>
