@@ -10,11 +10,13 @@ import {
     Alert,
     ScrollView,
     Modal,
+    Image,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import Header from "../../components/Header"; // Adjust path as needed
+import Header from "../../components/Header";
+import InventoryIcon from "../../assets/images/inv_image.png";
 
 // Assuming medication_schedule has reminder_enabled and reminder_threshold
 interface Medication {
@@ -87,7 +89,7 @@ const InventoryDetail: React.FC = () => {
         setLoading(false);
     };
 
-    // New handler for toggle changes
+    // Handler for toggle changes
     const handleToggleReminder = (value: boolean) => {
         setIsReminderEnabled(value);
         // If turning off, reset the threshold to 0 so we can update it to null in DB
@@ -96,7 +98,7 @@ const InventoryDetail: React.FC = () => {
         }
     };
 
-    // Handler: adding a new package of pills
+    // Add new package of pills
     const handleAddNewPackage = async (toAdd: number) => {
         if (!schedule) return;
         if (toAdd <= 0) {
@@ -123,11 +125,11 @@ const InventoryDetail: React.FC = () => {
         setLoading(false);
     };
 
-    // Handler: updating reminder settings in the database
+    // Update reminder settings
     const handleSaveReminders = async () => {
         if (!schedule) return;
 
-        // If the reminder is enabled, ensure the threshold is valid
+        // If the reminder is enabled, ensure threshold is valid
         if (isReminderEnabled && reminderThreshold <= 0) {
             Alert.alert("Invalid Input", "Please enter a valid threshold number.");
             return;
@@ -155,14 +157,14 @@ const InventoryDetail: React.FC = () => {
         setLoading(false);
     };
 
-    // Confirm new package from the stepper
+    // Confirm new package from stepper
     const confirmNewPackage = () => {
         setShowNewPackageModal(false);
         handleAddNewPackage(packageCount);
-        setPackageCount(1); // reset the stepper
+        setPackageCount(1);
     };
 
-    // Confirm threshold from the stepper
+    // Confirm threshold from stepper
     const confirmThreshold = () => {
         setReminderThreshold(thresholdStepper);
         setShowThresholdModal(false);
@@ -188,6 +190,12 @@ const InventoryDetail: React.FC = () => {
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Inventory" backRoute="/refill_tracker" />
             <ScrollView contentContainerStyle={styles.container}>
+                <Image
+                    style={styles.medImage}
+                    source={InventoryIcon}
+                    resizeMode="contain"
+                />
+
                 <Text style={styles.title}>
                     {schedule.medication?.name || "Medication"}
                 </Text>
@@ -200,33 +208,36 @@ const InventoryDetail: React.FC = () => {
                 {/* Add new package */}
                 <Text style={styles.sectionTitle}>Add new package</Text>
                 <TouchableOpacity
-                    style={styles.showModalButton}
+                    style={styles.actionButton}
                     onPress={() => setShowNewPackageModal(true)}
                 >
-                    <Text style={styles.showModalButtonText}>Add pills</Text>
+                    <Ionicons name="add-circle-outline" size={20} color="#fff" style={styles.actionIcon} />
+                    <Text style={styles.actionButtonText}>Add pills</Text>
                 </TouchableOpacity>
 
                 {/* Reminder switch & threshold */}
-                <View style={styles.reminderContainer}>
+                <View style={styles.switchContainer}>
                     <Text style={styles.label}>Remind me to refill</Text>
                     <Switch value={isReminderEnabled} onValueChange={handleToggleReminder} />
                 </View>
+
                 {isReminderEnabled && (
-                    <View style={styles.reminderRow}>
+                    <View style={styles.thresholdRow}>
                         <Text style={styles.label}>Remind me at</Text>
                         <TouchableOpacity
-                            style={styles.showModalButton}
+                            style={styles.thresholdButton}
                             onPress={() => {
                                 setThresholdStepper(reminderThreshold || 1);
                                 setShowThresholdModal(true);
                             }}
                         >
-                            <Text style={styles.showModalButtonText}>
+                            <Text style={styles.thresholdButtonText}>
                                 {reminderThreshold > 0 ? reminderThreshold : 1} pill(s)
                             </Text>
                         </TouchableOpacity>
                     </View>
                 )}
+
                 <TouchableOpacity style={styles.saveButton} onPress={handleSaveReminders}>
                     <Text style={styles.saveButtonText}>Save</Text>
                 </TouchableOpacity>
@@ -244,9 +255,7 @@ const InventoryDetail: React.FC = () => {
                             <View style={styles.stepperRow}>
                                 <TouchableOpacity
                                     style={styles.stepperButton}
-                                    onPress={() =>
-                                        setPackageCount((count) => Math.max(count - 1, 1))
-                                    }
+                                    onPress={() => setPackageCount((count) => Math.max(count - 1, 1))}
                                 >
                                     <Text style={styles.stepperButtonText}>-</Text>
                                 </TouchableOpacity>
@@ -292,9 +301,7 @@ const InventoryDetail: React.FC = () => {
                             <View style={styles.stepperRow}>
                                 <TouchableOpacity
                                     style={styles.stepperButton}
-                                    onPress={() =>
-                                        setThresholdStepper((val) => Math.max(val - 1, 1))
-                                    }
+                                    onPress={() => setThresholdStepper((val) => Math.max(val - 1, 1))}
                                 >
                                     <Text style={styles.stepperButtonText}>-</Text>
                                 </TouchableOpacity>
@@ -344,11 +351,17 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
+    medImage: {
+        width: 200,
+        height: 200,
+        alignSelf: "center",
+    },
     title: {
         fontSize: 22,
         fontWeight: "bold",
-        marginBottom: 12,
         textAlign: "center",
+        marginBottom: 12,
+        color: "#03045e", // Slightly bolder color
     },
     label: {
         fontSize: 16,
@@ -364,30 +377,49 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: "600",
         marginBottom: 8,
+        color: "#03045e",
     },
-    showModalButton: {
+    actionButton: {
+        flexDirection: "row",
         backgroundColor: "#20A0D8",
         paddingVertical: 12,
         borderRadius: 8,
         alignItems: "center",
+        justifyContent: "center",
         marginBottom: 24,
     },
-    showModalButtonText: {
+    actionIcon: {
+        marginRight: 6,
+    },
+    actionButtonText: {
         color: "#fff",
         fontWeight: "bold",
         fontSize: 16,
     },
-    reminderContainer: {
+    switchContainer: {
         flexDirection: "row",
         alignItems: "center",
         marginBottom: 16,
         justifyContent: "space-between",
     },
-    reminderRow: {
+    thresholdRow: {
         flexDirection: "row",
         alignItems: "center",
+        justifyContent: "space-between",
         marginBottom: 16,
-        justifyContent: "flex-start",
+    },
+    thresholdButton: {
+        backgroundColor: "#fff",
+        borderWidth: 2,
+        borderColor: "#20A0D8",
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 8,
+    },
+    thresholdButtonText: {
+        color: "#20A0D8",
+        fontWeight: "bold",
+        fontSize: 16,
     },
     saveButton: {
         backgroundColor: "#0077b6",
@@ -419,6 +451,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: "bold",
         marginBottom: 16,
+        color: "#03045e",
     },
     stepperRow: {
         flexDirection: "row",
@@ -429,7 +462,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: "#000", // 666, 0077b6
+        backgroundColor: "#666", // Neutral gray for +/- buttons
         alignItems: "center",
         justifyContent: "center",
         marginHorizontal: 10,

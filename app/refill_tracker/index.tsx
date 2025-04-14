@@ -7,11 +7,12 @@ import {
     TouchableOpacity,
     FlatList,
     ActivityIndicator,
+    Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
-import { Ionicons } from "@expo/vector-icons";
-import Header from "../../components/Header"; // Adjust the path based on your project structure
+import Header from "../../components/Header";
+import PillsIcon from "../../assets/images/pill_icon_64px.png";
 
 // Type definitions for medication and schedule records
 interface Medication {
@@ -95,7 +96,10 @@ const RefillTracker: React.FC = () => {
                 style={styles.card}
                 onPress={() => router.push(`/refill_tracker/${item.id}`)}
             >
-                <Ionicons name="medkit" size={30} color="#00b4d8" style={styles.icon} />
+                <Image
+                    source={PillsIcon}
+                    style={styles.icon}
+                />
                 <View style={styles.cardContent}>
                     <Text style={styles.medName}>{medName}</Text>
                     <Text style={styles.remaining}>Remaining Pills: {remaining}</Text>
@@ -106,10 +110,7 @@ const RefillTracker: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.safeContainer}>
-            {/* Reusable Header Component */}
             <Header title="Your Active Medicines" backRoute="/home" />
-
-            {/* Main Content */}
             <View style={styles.container}>
                 {loading ? (
                     <View style={styles.center}>
@@ -172,6 +173,8 @@ const styles = StyleSheet.create({
         elevation: 2,
     },
     icon: {
+        width: 30,
+        height: 30,
         marginRight: 12,
     },
     cardContent: {
