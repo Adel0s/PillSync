@@ -14,13 +14,13 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { supabase } from "../../lib/supabase";
 import { WheelPicker } from "react-native-ui-lib";
+import Header from "../../components/Header";
 
 // Example frequency options
 const FREQUENCY_OPTIONS = [
     { label: "Once daily", value: 1 },
     { label: "Twice daily", value: 2 },
     { label: "Three times daily", value: 3 },
-    { label: "Four times daily", value: 4 },
     { label: "As needed", value: 0 },
 ];
 
@@ -165,8 +165,6 @@ export default function MedicationSchedulePage() {
                     timesToInsert.push("09:00:00", "21:00:00");
                 } else if (selectedFrequency === 3) {
                     timesToInsert.push("08:00:00", "14:00:00", "20:00:00");
-                } else if (selectedFrequency === 4) {
-                    timesToInsert.push("06:00:00", "12:00:00", "18:00:00", "23:00:00");
                 }
                 const { error: timesError } = await supabase
                     .from("medication_schedule_times")
@@ -190,9 +188,8 @@ export default function MedicationSchedulePage() {
 
     return (
         <View style={styles.container}>
-            <View style={styles.header}>
-                <Text style={styles.headerTitle}>New Medication</Text>
-            </View>
+            {/* Using Header component instead of inline header view */}
+            <Header title="New Medication" backRoute="/(add_medication)" />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.card}>
@@ -232,7 +229,6 @@ export default function MedicationSchedulePage() {
                     {dosageError !== "" && (
                         <Text style={styles.errorText}>{dosageError}</Text>
                     )}
-
 
                     <Text style={styles.sectionTitle}>How often?</Text>
                     <View style={styles.optionsRow}>
@@ -404,16 +400,6 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#fff",
-    },
-    header: {
-        backgroundColor: "#0077b6",
-        paddingVertical: 16,
-        paddingHorizontal: 20,
-    },
-    headerTitle: {
-        fontSize: 20,
-        color: "#fff",
-        fontWeight: "bold",
     },
     scrollContent: {
         paddingHorizontal: 16,
