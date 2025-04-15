@@ -52,9 +52,9 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             setTaken(true);
             if (medication?.side_effect) {
                 Alert.alert(
-                    "⚠️ Efecte adverse posibile",
-                    medication.side_effect,
-                    [{ text: "OK", onPress: () => onPillTaken() }],
+                    "🌿 Just a heads-up!",
+                    `This medication may have some possible side effects:\n\n${medication.side_effect}\n\nIf you notice anything unusual, don’t hesitate to contact your doctor. 💬`,
+                    [{ text: "Got it!", onPress: () => onPillTaken() }],
                     { cancelable: true }
                 );
             } else {
