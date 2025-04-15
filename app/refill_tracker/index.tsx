@@ -112,6 +112,14 @@ const RefillTracker: React.FC = () => {
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Your Active Medicines" backRoute="/home" />
             <View style={styles.container}>
+                <View style={{ marginBottom: 16 }}>
+                    <Text style={{ fontSize: 16, color: "#03045e", textAlign: "center", lineHeight: 22 }}>
+                        Welcome! 🌿 Here you can view all your <Text style={{ fontWeight: "bold" }}>active medications</Text> along with the number of pills you have left. 💊{"\n\n"}
+                        Tap on any medication to open its detailed view. There, you’ll be able to{" "}
+                        <Text style={{ fontWeight: "bold" }}>set reminders</Text> 🕒 and{" "}
+                        <Text style={{ fontWeight: "bold" }}>add pills</Text> to your inventory when needed. 📦
+                    </Text>
+                </View>
                 {loading ? (
                     <View style={styles.center}>
                         <ActivityIndicator size="large" color="#0077b6" />
