@@ -10,13 +10,17 @@ import {
     Alert,
     ScrollView,
     Modal,
-    Image,
 } from "react-native";
+import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "../../components/Header";
-import InventoryIcon from "../../assets/images/inv_image.png";
+
+// Import the GIF asset (make sure you have a file named inv_image.gif in assets/images)
+import InventoryIcon from "../../assets/images/inventory_animated.gif";
+
+const blurhash = 'L038;[xu00WEIQIRRjxy9DRf%Qxx'
 
 // Assuming medication_schedule has reminder_enabled and reminder_threshold
 interface Medication {
@@ -193,7 +197,8 @@ const InventoryDetail: React.FC = () => {
                 <Image
                     style={styles.medImage}
                     source={InventoryIcon}
-                    resizeMode="contain"
+                    // placeholder={{ blurhash }}
+                    contentFit="contain"
                 />
 
                 <Text style={styles.title}>
@@ -352,8 +357,8 @@ const styles = StyleSheet.create({
         justifyContent: "center",
     },
     medImage: {
-        width: 200,
-        height: 200,
+        width: 150,
+        height: 150,
         alignSelf: "center",
     },
     title: {
@@ -361,7 +366,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         textAlign: "center",
         marginBottom: 12,
-        color: "#03045e", // Slightly bolder color
+        color: "#03045e",
     },
     label: {
         fontSize: 16,
@@ -433,7 +438,6 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: "bold",
     },
-    /* Modal Styles */
     modalBackground: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.3)",
@@ -462,7 +466,7 @@ const styles = StyleSheet.create({
         width: 50,
         height: 50,
         borderRadius: 25,
-        backgroundColor: "#666", // Neutral gray for +/- buttons
+        backgroundColor: "#666",
         alignItems: "center",
         justifyContent: "center",
         marginHorizontal: 10,
