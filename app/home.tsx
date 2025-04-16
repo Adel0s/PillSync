@@ -179,7 +179,7 @@ export default function Home() {
                         radius={60}
                         duration={750}
                         maxValue={100}
-                        activeStrokeColor={COLORS.light}
+                        activeStrokeColor={COLORS.veryLight}
                         inActiveStrokeColor={COLORS.primary}
                         activeStrokeWidth={10}
                         inActiveStrokeWidth={10}
