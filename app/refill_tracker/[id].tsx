@@ -116,7 +116,8 @@ const InventoryDetail: React.FC = () => {
             .from("medication_schedule")
             .update({ remaining_quantity: newRemaining })
             .eq("id", schedule.id)
-            .select()
+            // Fetch medication relation again so the name remains available
+            .select("*, medication(*)")
             .single();
 
         if (error) {
@@ -148,7 +149,8 @@ const InventoryDetail: React.FC = () => {
                 reminder_threshold: isReminderEnabled ? reminderThreshold : null,
             })
             .eq("id", schedule.id)
-            .select()
+            // Fetch medication relation again so the name remains available
+            .select("*, medication(*)")
             .single();
 
         if (error) {
