@@ -49,17 +49,11 @@ function NotificationOffsetWheel({
     return (
         <View style={styles.wheelContainer}>
             <WheelPicker
-                // The number of rows you see at once (including the selected row).
                 numberOfVisibleRows={5}
-                // Height each row will occupy.
                 itemHeight={40}
-                // Current selected value
                 initialValue={notificationOffset}
-                // The array of items (label + value)
                 items={items}
-                // Called when user scrolls to a new item
                 onChange={onChange}
-                // Make the picker tall enough so the selected item is clearly centered
                 style={styles.wheelPicker}
             />
             <Text style={styles.minutesText}>minutes</Text>
@@ -95,12 +89,17 @@ export default function MedicationSchedulePage() {
     const [isCustomDuration, setIsCustomDuration] = useState(false);
     const [customDuration, setCustomDuration] = useState("");
 
-    // New state for notification offset (in minutes)
+    // Notification offset
     const [notificationOffset, setNotificationOffset] = useState(5);
     const [showNotificationPicker, setShowNotificationPicker] = useState(false);
     const [dosageError, setDosageError] = useState("");
 
+    // Track authenticated user
     const [patientId, setPatientId] = useState<string | null>(null);
+
+    // State for dose times and controlling each time picker
+    const [doseTimes, setDoseTimes] = useState<Date[]>([]);
+    const [showTimePickerIndex, setShowTimePickerIndex] = useState<number | null>(null);
 
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
@@ -110,12 +109,25 @@ export default function MedicationSchedulePage() {
         });
     }, []);
 
+    // Whenever selectedFrequency changes, reset doseTimes
+    useEffect(() => {
+        if (selectedFrequency && selectedFrequency > 0) {
+            const newTimes: Date[] = [];
+            for (let i = 0; i < selectedFrequency; i++) {
+                newTimes.push(new Date()); // default to now
+            }
+            setDoseTimes(newTimes);
+        } else {
+            setDoseTimes([]);
+        }
+    }, [selectedFrequency]);
+
     const handleAddMedication = async () => {
         if (dosage.trim() === "") {
             setDosageError("Dosage is required.");
             return;
         }
-        setDosageError(""); // Clear error if dosage is valid
+        setDosageError("");
 
         if (!patientId) {
             Alert.alert("Error", "No patient ID found. Please log in first.");
@@ -153,19 +165,16 @@ export default function MedicationSchedulePage() {
                 .single();
 
             if (error) throw error;
-
             const newScheduleId = scheduleData.id;
 
-            // Insert times based on selected frequency
+            // Convert chosen doseTimes to "HH:mm:00" strings
             if (selectedFrequency && selectedFrequency > 0) {
-                const timesToInsert: string[] = [];
-                if (selectedFrequency === 1) {
-                    timesToInsert.push("09:00:00");
-                } else if (selectedFrequency === 2) {
-                    timesToInsert.push("09:00:00", "21:00:00");
-                } else if (selectedFrequency === 3) {
-                    timesToInsert.push("08:00:00", "14:00:00", "20:00:00");
-                }
+                const formatTime = (date: Date) => {
+                    const hh = String(date.getHours()).padStart(2, "0");
+                    const mm = String(date.getMinutes()).padStart(2, "0");
+                    return `${hh}:${mm}:00`;
+                };
+                const timesToInsert = doseTimes.map((t) => formatTime(t));
                 const { error: timesError } = await supabase
                     .from("medication_schedule_times")
                     .insert(
@@ -188,8 +197,7 @@ export default function MedicationSchedulePage() {
 
     return (
         <View style={styles.container}>
-            {/* Using Header component instead of inline header view */}
-            <Header title="New Medication" backRoute="/(add_medication)" />
+            <Header title="New Medication" backRoute="/home" />
 
             <ScrollView contentContainerStyle={styles.scrollContent}>
                 <View style={styles.card}>
@@ -225,7 +233,6 @@ export default function MedicationSchedulePage() {
                             }
                         }}
                     />
-                    {/* Conditionally render error message */}
                     {dosageError !== "" && (
                         <Text style={styles.errorText}>{dosageError}</Text>
                     )}
@@ -252,6 +259,40 @@ export default function MedicationSchedulePage() {
                             </TouchableOpacity>
                         ))}
                     </View>
+                    {/* Render a time picker for each dose based on selectedFrequency */}
+                    {doseTimes.map((time, index) => (
+                        <View key={index} style={{ marginBottom: 16 }}>
+                            <Text style={styles.label}>
+                                Dose Time #{index + 1}
+                            </Text>
+                            <TouchableOpacity
+                                style={[styles.input, { justifyContent: "center" }]}
+                                onPress={() => setShowTimePickerIndex(index)}
+                            >
+                                <Text style={{ color: "#333" }}>
+                                    {time.toLocaleTimeString([], {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                    })}
+                                </Text>
+                            </TouchableOpacity>
+                            {showTimePickerIndex === index && (
+                                <DateTimePicker
+                                    value={time}
+                                    mode="time"
+                                    display="default"
+                                    onChange={(event, selectedDate) => {
+                                        if (selectedDate) {
+                                            const updated = [...doseTimes];
+                                            updated[index] = selectedDate;
+                                            setDoseTimes(updated);
+                                        }
+                                        setShowTimePickerIndex(null);
+                                    }}
+                                />
+                            )}
+                        </View>
+                    ))}
 
                     <Text style={styles.sectionTitle}>For how long?</Text>
                     <View style={styles.optionsRow}>
@@ -539,7 +580,7 @@ const styles = StyleSheet.create({
         marginVertical: 16,
     },
     wheelPicker: {
-        height: 200,   // Enough height so the selected item is clearly in the center
+        height: 200,
         width: 100,
     },
     minutesText: {
