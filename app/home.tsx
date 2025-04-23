@@ -83,7 +83,7 @@ export default function Home() {
                 console.error("Error fetching schedules:", error);
                 return;
             }
-            if (!data) {
+            if (!data || data.length === 0) {
                 setTodaysSchedules([]);
                 setTotalDoses(0);
                 setDosesTaken(0);
@@ -91,7 +91,7 @@ export default function Home() {
             }
             console.log(data);
             const today = new Date();
-            const filtered = data.filter((schedule) => {
+            const filtered = data.filter(schedule => {
                 const start = new Date(schedule.start_date);
                 const end = new Date(start);
                 end.setDate(end.getDate() + schedule.duration_days);
@@ -108,33 +108,51 @@ export default function Home() {
                 today.getMonth(),
                 today.getDate() + 1
             );
-            const pillLogPromises = filtered.map((schedule) =>
-                supabase
-                    .from("pill_logs")
-                    .select("id", { count: "exact", head: true })
-                    .eq("schedule_id", schedule.id)
-                    .gte("taken_at", startOfDay.toISOString())
-                    .lt("taken_at", endOfDay.toISOString())
+
+            const logPromises: Promise<number>[] = filtered.flatMap(schedule =>
+                schedule.medication_schedule_times.map(async timeObj => {
+                    const { count, error: logError } = await supabase
+                        .from("pill_logs")
+                        .select("id", { count: "exact", head: true })
+                        .eq("schedule_id", schedule.id)
+                        .eq("schedule_time_id", timeObj.id)
+                        .gte("taken_at", startOfDay.toISOString())
+                        .lt("taken_at", endOfDay.toISOString());
+                    if (logError) throw logError;
+                    return count ?? 0;
+                })
             );
-            const pillLogResults = await Promise.all(pillLogPromises);
-            const updatedSchedules = filtered.map((schedule, index) => ({
-                ...schedule,
-                isTaken: (pillLogResults[index].count || 0) > 0,
-            }));
-            setTodaysSchedules(updatedSchedules);
-            setTotalDoses(updatedSchedules.length);
-            const totalTaken = pillLogResults.reduce(
-                (sum, res) => sum + (res.count || 0),
-                0
-            );
-            setDosesTaken(totalTaken);
+
+            const counts = await Promise.all(logPromises);
+
+            // 4) Flatten într-un array unde fiecare item e o pastilă la o oră
+            const flat: any[] = [];
+            let idx = 0;
+            filtered.forEach(schedule => {
+                schedule.medication_schedule_times.forEach(timeObj => {
+                    const count = counts[idx++];
+                    flat.push({
+                        scheduleId: schedule.id,
+                        scheduleTimeId: timeObj.id,
+                        medication: schedule.medication,
+                        dosage: schedule.dosage,
+                        time: timeObj.time,
+                        isTaken: count > 0,
+                        remainingQuantity: schedule.remaining_quantity,
+                    });
+                });
+            });
+
+            setTodaysSchedules(flat);
+            setTotalDoses(flat.length);
+            setDosesTaken(flat.filter(item => item.isTaken).length);
         } catch (err) {
             console.error("Unexpected error:", err);
         }
     };
 
     const handlePillTaken = () => {
-        setDosesTaken((prev) => prev + 1);
+        setDosesTaken(prev => prev + 1);
     };
 
     const progressValue = totalDoses > 0 ? (dosesTaken / totalDoses) * 100 : 0;
@@ -148,7 +166,7 @@ export default function Home() {
         // router.push("/history")
     };
     const handleRefillTracker = () => {
-        router.push("/refill_tracker")
+        router.push("/refill_tracker");
     };
 
     const renderEmptyList = () => (
@@ -266,7 +284,7 @@ export default function Home() {
         <SafeAreaView style={styles.safeArea}>
             <FlatList
                 data={todaysSchedules}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={item => item.scheduleTimeId.toString()}
                 renderItem={({ item }) => (
                     <ScheduleItemCard item={item} onPillTaken={handlePillTaken} />
                 )}

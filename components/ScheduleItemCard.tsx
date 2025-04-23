@@ -5,49 +5,68 @@ import {
     StyleSheet,
     TouchableOpacity,
     Alert,
-    Pressable,
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import MedicationDetailsModal from "./MedicationDetailsModal";
 
 interface ScheduleItemProps {
-    item: any;
+    item: {
+        scheduleId: number;
+        scheduleTimeId: number;
+        medication: {
+            id: number;
+            name: string;
+            active_substance?: string;
+            quantity?: number;
+            nr_of_pills?: number;
+            description?: string;
+            contraindications?: string;
+            side_effect?: string;
+            barcode?: string;
+        };
+        dosage: string;
+        time: string;
+        isTaken: boolean;
+        remainingQuantity: number;
+    };
     onPillTaken: () => void;
 }
 
 const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
-    const { medication, medication_schedule_times, dosage, id, isTaken: initialTaken } = item;
+    const {
+        scheduleId,
+        scheduleTimeId,
+        medication,
+        dosage,
+        time,
+        isTaken: initialTaken,
+        remainingQuantity,
+    } = item;
     const [taken, setTaken] = useState(initialTaken);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     const handleTake = async () => {
-        console.log("Take pill", item);
+        console.log("Taked pill: ", item);
         if (taken) return;
         try {
-            const { error: logError } = await supabase.from("pill_logs").insert([
-                { schedule_id: id, status: "taken" },
-            ]);
+            const { error: logError } = await supabase
+                .from("pill_logs")
+                .insert([
+                    {
+                        schedule_id: scheduleId,
+                        schedule_time_id: scheduleTimeId,
+                        status: "taken",
+                    },
+                ]);
             if (logError) throw logError;
 
-            // Fetch current remaining_quantity for this schedule
-            const { data: scheduleData, error: fetchError } = await supabase
-                .from("medication_schedule")
-                .select("remaining_quantity")
-                .eq("id", id)
-                .single();
-            if (fetchError) throw fetchError;
-
-            const currentRemaining = scheduleData.remaining_quantity || 0;
-            if (currentRemaining <= 0) return;
-            const newRemaining = currentRemaining - 1;
-
-            // Update the remaining_quantity
+            const newRemaining = remainingQuantity - 1;
             const { error: updateError } = await supabase
                 .from("medication_schedule")
                 .update({ remaining_quantity: newRemaining })
-                .eq("id", id);
+                .eq("id", scheduleId);
             if (updateError) throw updateError;
-            else console.log(id);
+            else console.log(scheduleId, "updated successfully");
 
             setTaken(true);
             if (medication?.side_effect) {
@@ -61,7 +80,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
                 onPillTaken();
             }
         } catch (e: any) {
-            console.error(e);
+            console.error("Error logging pill taken:", e);
         }
     };
 
@@ -78,12 +97,10 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
                 {dosage ? (
                     <Text style={styles.scheduleItemDosage}>Dosage: {dosage}</Text>
                 ) : null}
-                {medication_schedule_times?.length ? (
-                    medication_schedule_times.map((timeObj: any) => (
-                        <Text key={timeObj.id} style={styles.scheduleItemTime}>
-                            {timeObj.time}
-                        </Text>
-                    ))
+                {time ? (
+                    <Text style={styles.scheduleItemDosage}>
+                        {time}
+                    </Text>
                 ) : (
                     <Text style={styles.scheduleItemTime}>No times set</Text>
                 )}
@@ -105,10 +122,18 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             <MedicationDetailsModal
                 isVisible={showDetailsModal}
                 onClose={() => setShowDetailsModal(false)}
-                medication={medication}
+                medication={{
+                    ...medication,
+                    active_substance: medication.active_substance ?? "",
+                    quantity: medication.quantity ?? 0,
+                    nr_of_pills: medication.nr_of_pills ?? 0,
+                    description: medication.description ?? "",
+                    contraindications: medication.contraindications ?? "",
+                    side_effect: medication.side_effect ?? "",
+                    barcode: medication.barcode ?? "",
+                }}
             />
         </TouchableOpacity>
-
     );
 };
 
