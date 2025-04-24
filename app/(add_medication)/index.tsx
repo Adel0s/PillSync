@@ -184,6 +184,15 @@ export default function MedicationScan() {
                             <Text style={styles.scanText}>Scan Medication Barcode</Text>
                         </View>
                     </CameraView>
+                    <TouchableOpacity
+                        style={styles.uploadButton}
+                        onPress={() => {
+                            setScanned(true);
+                            setMedication(null);
+                        }}
+                    >
+                        <Text style={styles.uploadButtonText}>Manual Add</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.uploadButton} onPress={handleUploadPhoto}>
                         <Text style={styles.uploadButtonText}>Upload Photo</Text>
                     </TouchableOpacity>
@@ -286,7 +295,7 @@ export default function MedicationScan() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Quantity (numeric)"
+                        placeholder="Quantity for active substance(numeric)"
                         placeholderTextColor="#999"
                         value={quantity}
                         onChangeText={setQuantity}
@@ -294,7 +303,7 @@ export default function MedicationScan() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Number of Pills (numeric)"
+                        placeholder="Number of pills (numeric)"
                         placeholderTextColor="#999"
                         value={nrOfPills}
                         onChangeText={setNrOfPills}
