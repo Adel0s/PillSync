@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
     View,
     Text,
@@ -45,18 +45,36 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
     const [taken, setTaken] = useState(initialTaken);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
 
+    // 1) figure out if "now" is past this pill's time—recomputed every render
+    const now = new Date();
+    const [H, M, S] = time.split(":").map(Number);
+    const pillTime = new Date();
+    pillTime.setHours(H, M, S, 0);
+    const isOverdue = !taken && now > pillTime;
+
+    // 2) pick a border color
+    //    – default aqua, – green if taken, – red if overdue
+    const borderColor = taken
+        ? "#2ecc71"    // emerald green
+        : isOverdue
+            ? "#e74c3c"  // tomato red
+            : "#90e0ef"; // your light aqua
+
     const handleTake = async () => {
         console.log("Taked pill: ", item);
         if (taken) return;
         try {
+            const payload: Record<string, any> = {
+                schedule_id: scheduleId,
+                status: "taken",
+            };
+            if (scheduleTimeId > 0) {
+                payload.schedule_time_id = scheduleTimeId;
+            }
             const { error: logError } = await supabase
                 .from("pill_logs")
                 .insert([
-                    {
-                        schedule_id: scheduleId,
-                        schedule_time_id: scheduleTimeId,
-                        status: "taken",
-                    },
+                    payload,
                 ]);
             if (logError) throw logError;
 
@@ -87,7 +105,10 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
     return (
         <TouchableOpacity
             activeOpacity={0.9}
-            style={styles.scheduleItem}
+            style={[
+                styles.scheduleItem,
+                { borderColor }             // override the default border
+            ]}
             onPress={() => setShowDetailsModal(true)}
         >
             <View style={{ flex: 1 }}>

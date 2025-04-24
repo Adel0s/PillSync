@@ -142,7 +142,31 @@ export default function Home() {
                     });
                 });
             });
+            // 5) Add a schedule with no times set -> 'As Needed'
+            //    (this is a bit of a hack, but it works for now)
+            filtered.forEach(schedule => {
+                if (schedule.medication_schedule_times.length === 0) {
+                    flat.push({
+                        scheduleId: schedule.id,
+                        // give a unique negative key so it doesn’t collide with real times:
+                        scheduleTimeId: -schedule.id,
+                        medication: schedule.medication,
+                        dosage: schedule.dosage,
+                        time: "",          // empty → falsy, so the card shows “No times set”
+                        isTaken: false,    // always untaken by default
+                        remainingQuantity: schedule.remaining_quantity,
+                    });
+                }
+            });
 
+            // flat.sort((a, b) => a.time.localeCompare(b.time)); -> if there are no times set, this will throw an error
+            // (if the As needed case is treated)
+            flat.sort((a, b) => {
+                if (!a.time && !b.time) return 0;   // both no‐time
+                if (!a.time) return 1;  // push a after b
+                if (!b.time) return -1;  // push b after a
+                return a.time.localeCompare(b.time);
+            });
             setTodaysSchedules(flat);
             setTotalDoses(flat.length);
             setDosesTaken(flat.filter(item => item.isTaken).length);
