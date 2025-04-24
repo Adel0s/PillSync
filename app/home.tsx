@@ -242,7 +242,7 @@ export default function Home() {
                     onPress={handleAddMedication}
                 >
                     <View style={styles.buttonContent}>
-                        <Ionicons name="medkit-outline" size={24} color="#fff" style={styles.actionIcon} />
+                        <Ionicons name="add-circle-outline" size={24} color="#fff" style={styles.actionIcon} />
                         <Text style={styles.actionButtonText}>Add Medication</Text>
                     </View>
                 </TouchableOpacity>
@@ -269,8 +269,8 @@ export default function Home() {
                     onPress={handleRefillTracker}
                 >
                     <View style={styles.buttonContent}>
-                        <Ionicons name="sync-outline" size={24} color="#fff" style={styles.actionIcon} />
-                        <Text style={styles.actionButtonText}>Refill Tracker</Text>
+                        <Ionicons name="medkit-outline" size={24} color="#fff" style={styles.actionIcon} />
+                        <Text style={styles.actionButtonText}>Treatment</Text>
                     </View>
                 </TouchableOpacity>
             </View>

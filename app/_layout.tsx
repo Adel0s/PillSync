@@ -13,6 +13,8 @@ export default function Layout() {
         <Stack.Screen name="(add_medication)/index" />
         <Stack.Screen name="(add_medication)/schedule" />
         <Stack.Screen name="refill_tracker/index" />
+        <Stack.Screen name="refill_tracker/[id]/index" />
+        <Stack.Screen name="refill_tracker/[id]/inventory" />
         <Stack.Screen name="reset_password" />
       </Stack>
     </AuthProvider>

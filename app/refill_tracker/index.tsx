@@ -76,7 +76,7 @@ const RefillTracker: React.FC = () => {
             .from("medication_schedule")
             .select("*, medication(*)")
             .eq("patient_id", userId)
-            .eq("status", "active");
+            .in("status", ["active", "paused"]);
         if (error) {
             console.error("Error fetching medication schedules:", error);
         } else {

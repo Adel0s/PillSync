@@ -13,12 +13,12 @@ import {
 } from "react-native";
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
-import Header from "../../components/Header";
+import Header from "../../../components/Header";
 
 // Import the GIF asset (make sure you have a file named inv_image.gif in assets/images)
-import InventoryIcon from "../../assets/images/inventory_animated.gif";
+import InventoryIcon from "../../../assets/images/inventory_animated.gif";
 
 const blurhash = 'L038;[xu00WEIQIRRjxy9DRf%Qxx'
 
