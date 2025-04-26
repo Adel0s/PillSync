@@ -156,7 +156,10 @@ export default function MedicationDetails() {
                     </View>
                 </TouchableOpacity>
 
-                <View style={styles.card}>
+                <TouchableOpacity
+                    style={styles.card}
+                    onPress={() => router.push(`/refill_tracker/${id}/schedule_pill_list`)}
+                >
                     <Text style={styles.cardTitle}>Medication schedule</Text>
 
                     {count > 0 ? (
@@ -169,7 +172,7 @@ export default function MedicationDetails() {
                     ) : (
                         <Text style={styles.cardSubtitle}>No schedule times set</Text>
                     )}
-                </View>
+                </TouchableOpacity>
 
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Reminder settings</Text>
