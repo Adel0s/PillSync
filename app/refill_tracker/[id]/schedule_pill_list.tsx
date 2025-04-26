@@ -66,6 +66,7 @@ export default function ScheduleList() {
         selected?: Date
     ) {
         setShowPicker(false);
+
         if (event.type === "set" && editingId !== null && selected) {
             // format to "HH:MM:SS"
             const hh = selected.getHours().toString().padStart(2, "0");
@@ -78,9 +79,11 @@ export default function ScheduleList() {
                 .update({ time: newTime })
                 .eq("id", editingId);
 
+            setLoading(false);
+
             if (error) {
                 console.error(error);
-                Alert.alert("Error", "Could not update time.");
+                Alert.alert("Error", "Could not update reminder time.");
             } else {
                 // update local list
                 setTimes((ts) =>
@@ -88,12 +91,11 @@ export default function ScheduleList() {
                         t.id === editingId ? { ...t, time: newTime } : t
                     )
                 );
+                Alert.alert("Success", "Reminder time updated.");
             }
-            setLoading(false);
-            setEditingId(null);
-        } else {
-            setEditingId(null);
         }
+
+        setEditingId(null);
     }
 
     async function deleteTime(entryId: number) {
@@ -111,6 +113,8 @@ export default function ScheduleList() {
                             .from("medication_schedule_times")
                             .delete()
                             .eq("id", entryId);
+                        setLoading(false);
+
                         if (error) {
                             console.error(error);
                             Alert.alert("Error", "Could not delete reminder.");
@@ -118,8 +122,8 @@ export default function ScheduleList() {
                             setTimes((ts) =>
                                 ts.filter((t) => t.id !== entryId)
                             );
+                            Alert.alert("Deleted", "Reminder removed.");
                         }
-                        setLoading(false);
                     },
                 },
             ],
