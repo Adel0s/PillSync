@@ -14,11 +14,15 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 import Header from "../../../components/Header";
 
+// 1) Extend the interface with schedule_times
 interface MedicationDetails {
     id: number;
+    start_date: string;
+    duration_days: number;
     remaining_quantity: number;
     reminder_enabled: boolean;
     medication?: { name: string };
+    medication_schedule_times?: { time: string }[];
 }
 
 export default function MedicationDetails() {
@@ -31,13 +35,19 @@ export default function MedicationDetails() {
         if (id) fetchDetail(+id);
     }, [id]);
 
+    // 2) Pull in medication_schedule_times
     async function fetchDetail(scheduleId: number) {
         setLoading(true);
         const { data, error } = await supabase
             .from("medication_schedule")
-            .select("*, medication(*)")
+            .select(`
+        *,
+        medication(*),
+        medication_schedule_times(time)
+      `)
             .eq("id", scheduleId)
             .single();
+
         if (error) {
             console.error(error);
             Alert.alert("Error", "Could not load medication details.");
@@ -88,6 +98,40 @@ export default function MedicationDetails() {
         );
     }
 
+    // 3) Compute schedule display
+    const times = detail.medication_schedule_times
+        ?.map((t) => t.time)
+        .sort() ?? []; // they come as "HH:MM:SS"
+    const count = times.length;
+
+    // helper to format "HH:MM:SS" → "h:mm A"
+    function fmt(t: string) {
+        const [hh, mm] = t.split(":").map(Number);
+        const d = new Date();
+        d.setHours(hh, mm);
+        return d.toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+        });
+    }
+
+    // Build the schedule line
+    let scheduleText = "";
+    if (count === 1) {
+        scheduleText = `Daily — ${fmt(times[0])}`;
+    } else if (count === 2) {
+        scheduleText = `2 times daily — ${fmt(times[0])} and ${fmt(times[1])}`;
+    } else if (count > 2) {
+        const formatted = times.map(fmt);
+        const last = formatted.pop();
+        scheduleText = `${count} times daily — ${formatted.join(", ")}, and ${last}`;
+    }
+
+    // optionally compute end date
+    const startDate = new Date(detail.start_date);
+    const endDate = new Date(startDate);
+    endDate.setDate(startDate.getDate() + detail.duration_days);
+
     const name = detail.medication?.name ?? "Medication";
 
     return (
@@ -114,10 +158,17 @@ export default function MedicationDetails() {
 
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Medication schedule</Text>
-                    <Text style={styles.cardSubtitle}>
-                        Daily — 6 times between 8:00 AM and 8:00 PM
-                    </Text>
-                    <Text style={styles.cardSubtitle}>No end date</Text>
+
+                    {count > 0 ? (
+                        <>
+                            <Text style={styles.cardSubtitle}>{scheduleText}</Text>
+                            <Text style={styles.cardSubtitle}>
+                                Ends on {endDate.toLocaleDateString()}
+                            </Text>
+                        </>
+                    ) : (
+                        <Text style={styles.cardSubtitle}>No schedule times set</Text>
+                    )}
                 </View>
 
                 <View style={styles.card}>
