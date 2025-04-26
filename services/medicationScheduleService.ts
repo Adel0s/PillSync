@@ -35,7 +35,7 @@ export async function fetchScheduleDetails(scheduleId: number) {
         .single();
 
     return {
-        data: data as Pick<MedicationScheduleDetails, "as_needed" | "medication_schedule_times"> | null,
+        data: data as MedicationScheduleDetails | null,
         error,
     };
 }
@@ -115,5 +115,14 @@ export async function setAsNeeded(scheduleId: number) {
         .update({ as_needed: true })
         .eq("id", scheduleId);
 
+    return { error };
+}
+
+// 8) Switch to not as_needed
+export async function unsetAsNeeded(scheduleId: number) {
+    const { error } = await supabase
+        .from("medication_schedule")
+        .update({ as_needed: false })
+        .eq("id", scheduleId);
     return { error };
 }

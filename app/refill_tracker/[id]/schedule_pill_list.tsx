@@ -31,6 +31,8 @@ export default function SchedulePillList() {
 
     const [times, setTimes] = useState<ScheduleTime[]>([]);
     const [asNeeded, setAsNeededState] = useState(false);
+    const [startDate, setStartDate] = useState<string>("");
+    const [durationDays, setDurationDays] = useState<number>(0);
     const [loading, setLoading] = useState(true);
 
     // For editing vs adding
@@ -54,6 +56,8 @@ export default function SchedulePillList() {
         } else {
             setAsNeededState(data.as_needed);
             setTimes(data.medication_schedule_times || []);
+            setStartDate(data.start_date);
+            setDurationDays(data.duration_days);
         }
         setLoading(false);
     }
@@ -87,7 +91,6 @@ export default function SchedulePillList() {
             setAdding(false);
             return;
         }
-
         const hh = selected.getHours().toString().padStart(2, "0");
         const mm = selected.getMinutes().toString().padStart(2, "0");
         const newTime = `${hh}:${mm}:00`;
@@ -112,7 +115,7 @@ export default function SchedulePillList() {
             } else {
                 setTimes(ts =>
                     ts
-                        .map(t => t.id === editingId ? { ...t, time: newTime } : t)
+                        .map(t => (t.id === editingId ? { ...t, time: newTime } : t))
                         .sort((a, b) => a.time.localeCompare(b.time))
                 );
                 Alert.alert("Success", "Reminder time updated.");
@@ -188,10 +191,26 @@ export default function SchedulePillList() {
         const [hh, mm] = ts.split(":").map(Number);
         const d = new Date();
         d.setHours(hh, mm);
-        return d.toLocaleTimeString([], {
-            hour: "numeric",
-            minute: "2-digit",
-        });
+        return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+
+    // Frequency label
+    const freqCount = times.length;
+    let frequencyLabel = asNeeded
+        ? "As needed"
+        : freqCount === 1
+            ? "Once daily"
+            : freqCount === 2
+                ? "Twice daily"
+                : `${freqCount} times daily`;
+
+    // Duration label
+    // If no duration, show "No end date"
+    let durationLabel = "No end date";
+    if (durationDays > 0) {
+        const end = new Date(startDate);
+        end.setDate(end.getDate() + durationDays);
+        durationLabel = `Ends on ${end.toLocaleDateString()}`;
     }
 
     if (loading) {
@@ -202,64 +221,84 @@ export default function SchedulePillList() {
         );
     }
 
-    if (asNeeded) {
-        return (
-            <SafeAreaView style={styles.safeContainer}>
-                <Header title="Medication schedule" backRoute={`/refill_tracker/${scheduleId}`} />
+    return (
+        <SafeAreaView style={styles.safeContainer}>
+            <Header title="Medication schedule" backRoute={`/refill_tracker/${scheduleId}`} />
+
+            {/* Frequency */}
+            <View style={styles.card}>
+                <View style={styles.cardRow}>
+                    <Ionicons name="repeat-outline" size={24} color="#03045e" style={styles.cardIcon} />
+                    <View>
+                        <Text style={styles.cardTitle}>Frequency</Text>
+                        <Text style={styles.cardSubtitle}>{frequencyLabel}</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Duration */}
+            <View style={styles.card}>
+                <View style={styles.cardRow}>
+                    <Ionicons name="calendar-outline" size={24} color="#03045e" style={styles.cardIcon} />
+                    <View>
+                        <Text style={styles.cardTitle}>Duration</Text>
+                        <Text style={styles.cardSubtitle}>{durationLabel}</Text>
+                    </View>
+                </View>
+            </View>
+
+            {/* Section header */}
+            <Text style={styles.sectionHeader}>Reminder details</Text>
+
+            {asNeeded ? (
                 <View style={styles.center}>
                     <Text style={styles.infoText}>
                         This medication is set to <Text style={{ fontWeight: "bold" }}>As needed</Text>.
                     </Text>
                     <Text style={styles.subInfo}>No fixed reminder times.</Text>
                 </View>
-            </SafeAreaView>
-        );
-    }
+            ) : (
+                <>
+                    <FlatList
+                        data={times}
+                        keyExtractor={item => item.id.toString()}
+                        ItemSeparatorComponent={() => <View style={styles.sep} />}
+                        contentContainerStyle={styles.list}
+                        renderItem={({ item }) => (
+                            <View style={styles.row}>
+                                <TouchableOpacity style={styles.timeButton} onPress={() => openEdit(item)}>
+                                    <Text style={styles.timeText}>{fmt(item.time)}</Text>
+                                    <Ionicons name="chevron-down" size={16} color="#555" style={{ marginLeft: 4 }} />
+                                </TouchableOpacity>
+                                <TouchableOpacity style={styles.trashButton} onPress={() => handleDelete(item.id)}>
+                                    <Ionicons name="trash-outline" size={20} color="#ff4444" />
+                                </TouchableOpacity>
+                            </View>
+                        )}
+                    />
 
-    const canAdd = times.length < 3;
-
-    return (
-        <SafeAreaView style={styles.safeContainer}>
-            <Header title="Medication schedule" backRoute={`/refill_tracker/${scheduleId}`} />
-
-            <FlatList
-                data={times}
-                keyExtractor={item => item.id.toString()}
-                ItemSeparatorComponent={() => <View style={styles.sep} />}
-                contentContainerStyle={styles.list}
-                renderItem={({ item }) => (
-                    <View style={styles.row}>
-                        <TouchableOpacity style={styles.timeButton} onPress={() => openEdit(item)}>
-                            <Text style={styles.timeText}>{fmt(item.time)}</Text>
-                            <Ionicons name="chevron-down" size={16} color="#555" style={{ marginLeft: 4 }} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={styles.trashButton} onPress={() => handleDelete(item.id)}>
-                            <Ionicons name="trash-outline" size={20} color="#ff4444" />
-                        </TouchableOpacity>
+                    <View style={styles.footer}>
+                        {times.length < 3 ? (
+                            <TouchableOpacity style={styles.addButton} onPress={openAdd}>
+                                <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
+                                <Text style={styles.addText}>Add reminder time</Text>
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity style={styles.convertButton} onPress={convertToAsNeeded}>
+                                <Text style={styles.convertText}>Switch to As-needed</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
-                )}
-            />
 
-            <View style={styles.footer}>
-                {canAdd ? (
-                    <TouchableOpacity style={styles.addButton} onPress={openAdd}>
-                        <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
-                        <Text style={styles.addText}>Add reminder time</Text>
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity style={styles.convertButton} onPress={convertToAsNeeded}>
-                        <Text style={styles.convertText}>Switch to As-needed</Text>
-                    </TouchableOpacity>
-                )}
-            </View>
-
-            {showPicker && (
-                <DateTimePicker
-                    value={pickerValue}
-                    mode="time"
-                    display={Platform.OS === "ios" ? "spinner" : "default"}
-                    onChange={onPickerChange}
-                />
+                    {showPicker && (
+                        <DateTimePicker
+                            value={pickerValue}
+                            mode="time"
+                            display={Platform.OS === "ios" ? "spinner" : "default"}
+                            onChange={onPickerChange}
+                        />
+                    )}
+                </>
             )}
         </SafeAreaView>
     );
@@ -267,8 +306,28 @@ export default function SchedulePillList() {
 
 const styles = StyleSheet.create({
     safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
+    card: {
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 16,
+        marginHorizontal: 16,
+        marginTop: 16,
+        borderWidth: 1,
+        borderColor: "#90e0ef",
+    },
+    cardRow: { flexDirection: "row", alignItems: "center" },
+    cardIcon: { marginRight: 12 },
+    cardTitle: { fontSize: 16, fontWeight: "600", color: "#03045e" },
+    cardSubtitle: { fontSize: 14, color: "#555", marginTop: 4 },
+    sectionHeader: {
+        marginTop: 24,
+        marginHorizontal: 16,
+        fontSize: 18,
+        fontWeight: "600",
+        color: "#03045e",
+    },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
-    infoText: { fontSize: 18, color: "#555", textAlign: "center" },
+    infoText: { fontSize: 16, color: "#555", textAlign: "center", margin: 16 },
     subInfo: { marginTop: 12, color: "#777", textAlign: "center" },
     list: { padding: 16 },
     sep: { height: 12 },
