@@ -1,3 +1,4 @@
+// app/refill_tracker/[id]/schedule_pill_list.tsx
 import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
@@ -13,21 +14,23 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { supabase } from "../../../lib/supabase";
 import Header from "../../../components/Header";
+import {
+    ScheduleTime,
+    fetchScheduleDetails,
+    addScheduleTime,
+    updateScheduleTime,
+    deleteScheduleTime,
+    setAsNeeded,
+} from "../../../services/medicationScheduleService";
 
-interface ScheduleTime {
-    id: number;
-    time: string; // "HH:MM:SS"
-}
-
-export default function ScheduleList() {
+export default function SchedulePillList() {
     const { id } = useLocalSearchParams<{ id: string }>();
     const scheduleId = Number(id);
     const router = useRouter();
 
     const [times, setTimes] = useState<ScheduleTime[]>([]);
-    const [asNeeded, setAsNeeded] = useState(false);
+    const [asNeeded, setAsNeededState] = useState(false);
     const [loading, setLoading] = useState(true);
 
     // For editing vs adding
@@ -39,37 +42,23 @@ export default function ScheduleList() {
     const [showPicker, setShowPicker] = useState(false);
 
     useEffect(() => {
-        if (!isNaN(scheduleId)) fetchAll();
+        if (!isNaN(scheduleId)) loadSchedule();
     }, [scheduleId]);
 
-    async function fetchAll() {
+    async function loadSchedule() {
         setLoading(true);
-
-        // Fetch as_needed + times
-        const { data, error } = await supabase
-            .from("medication_schedule")
-            .select(`
-        as_needed,
-        medication_schedule_times (
-          id,
-          time
-        )
-      `)
-            .eq("id", scheduleId)
-            .single();
-
-        if (error) {
+        const { data, error } = await fetchScheduleDetails(scheduleId);
+        if (error || !data) {
             console.error(error);
             Alert.alert("Error", "Could not load reminder times.");
         } else {
-            setAsNeeded(data.as_needed);
-            setTimes(data.medication_schedule_times ?? []);
+            setAsNeededState(data.as_needed);
+            setTimes(data.medication_schedule_times || []);
         }
         setLoading(false);
     }
 
-    function onStartEdit(entry: ScheduleTime) {
-        // preload the picker
+    function openEdit(entry: ScheduleTime) {
         const [hh, mm] = entry.time.split(":").map(Number);
         const d = new Date();
         d.setHours(hh, mm, 0, 0);
@@ -79,7 +68,7 @@ export default function ScheduleList() {
         setShowPicker(true);
     }
 
-    function onStartAdd() {
+    function openAdd() {
         const now = new Date();
         now.setSeconds(0, 0);
         setPickerValue(now);
@@ -93,7 +82,6 @@ export default function ScheduleList() {
         selected?: Date
     ) {
         setShowPicker(false);
-
         if (event.type !== "set" || !selected) {
             setEditingId(null);
             setAdding(false);
@@ -105,48 +93,37 @@ export default function ScheduleList() {
         const newTime = `${hh}:${mm}:00`;
 
         setLoading(true);
-
         if (adding) {
-            // INSERT new time and ask Supabase to return the inserted row
-            const { data, error } = await supabase
-                .from("medication_schedule_times")
-                .insert([{ schedule_id: scheduleId, time: newTime }])
-                .select("id, time")           // ← add this
-                .single();                    // ← and chain .single()
-            if (error) {
+            const { data, error } = await addScheduleTime(scheduleId, newTime);
+            if (error || !data) {
                 console.error(error);
                 Alert.alert("Error", "Failed to add reminder time.");
             } else {
-                setTimes((ts) =>
+                setTimes(ts =>
                     [...ts, data].sort((a, b) => a.time.localeCompare(b.time))
                 );
                 Alert.alert("Success", "Reminder time added.");
             }
         } else if (editingId !== null) {
-            // UPDATE existing
-            const { error } = await supabase
-                .from("medication_schedule_times")
-                .update({ time: newTime })
-                .eq("id", editingId);
+            const { error } = await updateScheduleTime(editingId, newTime);
             if (error) {
                 console.error(error);
                 Alert.alert("Error", "Failed to update reminder time.");
             } else {
-                setTimes((ts) =>
+                setTimes(ts =>
                     ts
-                        .map((t) => (t.id === editingId ? { ...t, time: newTime } : t))
+                        .map(t => t.id === editingId ? { ...t, time: newTime } : t)
                         .sort((a, b) => a.time.localeCompare(b.time))
                 );
                 Alert.alert("Success", "Reminder time updated.");
             }
         }
-
         setEditingId(null);
         setAdding(false);
         setLoading(false);
     }
 
-    async function deleteTime(entryId: number) {
+    async function handleDelete(entryId: number) {
         Alert.alert(
             "Delete Reminder",
             "Remove this reminder time?",
@@ -157,26 +134,17 @@ export default function ScheduleList() {
                     style: "destructive",
                     onPress: async () => {
                         setLoading(true);
-                        const { error } = await supabase
-                            .from("medication_schedule_times")
-                            .delete()
-                            .eq("id", entryId);
-
+                        const { error } = await deleteScheduleTime(entryId);
                         if (error) {
                             console.error(error);
                             Alert.alert("Error", "Failed to delete reminder.");
                         } else {
-                            const newList = times.filter((t) => t.id !== entryId);
+                            const newList = times.filter(t => t.id !== entryId);
                             setTimes(newList);
                             Alert.alert("Deleted", "Reminder removed.");
 
-                            // If that was the last time, convert to as-needed
                             if (newList.length === 0 && !asNeeded) {
-                                const { error: e2 } = await supabase
-                                    .from("medication_schedule")
-                                    .update({ as_needed: true })
-                                    .eq("id", scheduleId);
-
+                                const { error: e2 } = await setAsNeeded(scheduleId);
                                 if (e2) {
                                     console.error(e2);
                                     Alert.alert(
@@ -184,7 +152,7 @@ export default function ScheduleList() {
                                         "Failed to switch to As-needed mode."
                                     );
                                 } else {
-                                    setAsNeeded(true);
+                                    setAsNeededState(true);
                                     Alert.alert(
                                         "As-needed mode",
                                         "No fixed reminders left—switched to As-needed."
@@ -192,7 +160,6 @@ export default function ScheduleList() {
                                 }
                             }
                         }
-
                         setLoading(false);
                     },
                 },
@@ -203,17 +170,13 @@ export default function ScheduleList() {
 
     async function convertToAsNeeded() {
         setLoading(true);
-        const { error } = await supabase
-            .from("medication_schedule")
-            .update({ as_needed: true })
-            .eq("id", scheduleId);
+        const { error } = await setAsNeeded(scheduleId);
         setLoading(false);
-
         if (error) {
             console.error(error);
             Alert.alert("Error", "Failed to set As-needed mode.");
         } else {
-            setAsNeeded(true);
+            setAsNeededState(true);
             Alert.alert(
                 "As-needed mode",
                 "This medication is now marked 'As needed'."
@@ -239,89 +202,53 @@ export default function ScheduleList() {
         );
     }
 
-    // AS-NEEDED UI
     if (asNeeded) {
         return (
             <SafeAreaView style={styles.safeContainer}>
-                <Header
-                    title="Medication schedule"
-                    backRoute={`/refill_tracker/${scheduleId}`}
-                />
+                <Header title="Medication schedule" backRoute={`/refill_tracker/${scheduleId}`} />
                 <View style={styles.center}>
                     <Text style={styles.infoText}>
-                        This medication is set to{" "}
-                        <Text style={{ fontWeight: "bold" }}>As needed</Text>.
+                        This medication is set to <Text style={{ fontWeight: "bold" }}>As needed</Text>.
                     </Text>
-                    <Text style={styles.subInfo}>
-                        No fixed reminder times.
-                    </Text>
+                    <Text style={styles.subInfo}>No fixed reminder times.</Text>
                 </View>
             </SafeAreaView>
         );
     }
 
-    // FIXED-SCHEDULE UI
     const canAdd = times.length < 3;
 
     return (
         <SafeAreaView style={styles.safeContainer}>
-            <Header
-                title="Medication schedule"
-                backRoute={`/refill_tracker/${scheduleId}`}
-            />
+            <Header title="Medication schedule" backRoute={`/refill_tracker/${scheduleId}`} />
 
             <FlatList
                 data={times}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={item => item.id.toString()}
                 ItemSeparatorComponent={() => <View style={styles.sep} />}
                 contentContainerStyle={styles.list}
                 renderItem={({ item }) => (
                     <View style={styles.row}>
-                        <TouchableOpacity
-                            style={styles.timeButton}
-                            onPress={() => onStartEdit(item)}
-                        >
+                        <TouchableOpacity style={styles.timeButton} onPress={() => openEdit(item)}>
                             <Text style={styles.timeText}>{fmt(item.time)}</Text>
-                            <Ionicons
-                                name="chevron-down"
-                                size={16}
-                                color="#555"
-                                style={{ marginLeft: 4 }}
-                            />
+                            <Ionicons name="chevron-down" size={16} color="#555" style={{ marginLeft: 4 }} />
                         </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.trashButton}
-                            onPress={() => deleteTime(item.id)}
-                        >
+                        <TouchableOpacity style={styles.trashButton} onPress={() => handleDelete(item.id)}>
                             <Ionicons name="trash-outline" size={20} color="#ff4444" />
                         </TouchableOpacity>
                     </View>
                 )}
             />
 
-            <View style={{ padding: 16 }}>
+            <View style={styles.footer}>
                 {canAdd ? (
-                    <TouchableOpacity
-                        style={styles.addButton}
-                        onPress={onStartAdd}
-                    >
-                        <Ionicons
-                            name="add-circle-outline"
-                            size={20}
-                            color="#fff"
-                            style={{ marginRight: 6 }}
-                        />
+                    <TouchableOpacity style={styles.addButton} onPress={openAdd}>
+                        <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
                         <Text style={styles.addText}>Add reminder time</Text>
                     </TouchableOpacity>
                 ) : (
-                    <TouchableOpacity
-                        style={styles.convertButton}
-                        onPress={convertToAsNeeded}
-                    >
-                        <Text style={styles.convertText}>
-                            More than 3 reminders? Switch to As-needed
-                        </Text>
+                    <TouchableOpacity style={styles.convertButton} onPress={convertToAsNeeded}>
+                        <Text style={styles.convertText}>Switch to As-needed</Text>
                     </TouchableOpacity>
                 )}
             </View>
@@ -362,6 +289,7 @@ const styles = StyleSheet.create({
     },
     timeText: { fontSize: 18, color: "#03045e" },
     trashButton: { padding: 8 },
+    footer: { padding: 16 },
     addButton: {
         flexDirection: "row",
         backgroundColor: "#0077b6",

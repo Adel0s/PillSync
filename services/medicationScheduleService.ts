@@ -5,6 +5,7 @@ export interface ScheduleTime {
     id: number;
     time: string; // "HH:MM:SS"
 }
+
 export interface MedicationScheduleDetails {
     id: number;
     start_date: string;
@@ -34,7 +35,7 @@ export async function fetchScheduleDetails(scheduleId: number) {
         .single();
 
     return {
-        data: data as MedicationScheduleDetails | null,
+        data: data as Pick<MedicationScheduleDetails, "as_needed" | "medication_schedule_times"> | null,
         error,
     };
 }
@@ -59,11 +60,26 @@ export async function deleteSchedule(scheduleId: number) {
     return { error };
 }
 
-// 4) Add a new reminder time
+// 4) Add a new reminder time (returns the inserted row)
 export async function addScheduleTime(scheduleId: number, time: string) {
+    // 1) fetch one existing offset (they’re all the same)
+    const { data: existing, error: fetchErr } = await supabase
+        .from("medication_schedule_times")
+        .select("notification_offset")
+        .eq("schedule_id", scheduleId)
+        .limit(1)
+        .single();
+
+    const offset =
+        fetchErr || existing?.notification_offset == null
+            ? 5
+            : existing.notification_offset;
+
+    // 2) insert the new time with the same offset
     const { data, error } = await supabase
         .from("medication_schedule_times")
-        .insert([{ schedule_id: scheduleId, time }])
+        .insert({ schedule_id: scheduleId, time, notification_offset: offset })
+        .select("id, time") // still just return id & time
         .single();
 
     return {
