@@ -1,4 +1,3 @@
-// app/refill_tracker/[id]/index.tsx
 import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
@@ -10,6 +9,7 @@ import {
     ActivityIndicator,
     Alert,
 } from "react-native";
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 import Header from "../../../components/Header";
@@ -41,9 +41,9 @@ export default function MedicationDetails() {
         const { data, error } = await supabase
             .from("medication_schedule")
             .select(`
-        *,
-        medication(*),
-        medication_schedule_times(time)
+            *,
+            medication(*),
+            medication_schedule_times(time)
       `)
             .eq("id", scheduleId)
             .single();
@@ -127,7 +127,7 @@ export default function MedicationDetails() {
         scheduleText = `${count} times daily — ${formatted.join(", ")}, and ${last}`;
     }
 
-    // optionally compute end date
+    // compute end date
     const startDate = new Date(detail.start_date);
     const endDate = new Date(startDate);
     endDate.setDate(startDate.getDate() + detail.duration_days);
@@ -139,7 +139,10 @@ export default function MedicationDetails() {
             <Header title="Medication details" backRoute="/refill_tracker" />
             <ScrollView contentContainerStyle={styles.container}>
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>{name}</Text>
+                    <View style={styles.cardRowLeft}>
+                        <Ionicons name="medical-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                        <Text style={styles.cardTitle}>{name}</Text>
+                    </View>
                 </View>
 
                 <TouchableOpacity
@@ -148,11 +151,16 @@ export default function MedicationDetails() {
                         router.push(`/refill_tracker/${id}/inventory`)
                     }
                 >
-                    <Text style={styles.cardTitle}>Inventory</Text>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeText}>
-                            {detail.remaining_quantity} pill(s) left
-                        </Text>
+                    <View style={styles.cardRow}>
+                        <View style={styles.cardRowLeft}>
+                            <Ionicons name="layers-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                            <Text style={styles.cardTitle}>Inventory</Text>
+                        </View>
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>
+                                {detail.remaining_quantity} pill(s) left
+                            </Text>
+                        </View>
                     </View>
                 </TouchableOpacity>
 
@@ -160,7 +168,10 @@ export default function MedicationDetails() {
                     style={styles.card}
                     onPress={() => router.push(`/refill_tracker/${id}/schedule_pill_list`)}
                 >
-                    <Text style={styles.cardTitle}>Medication schedule</Text>
+                    <View style={styles.cardRowLeft}>
+                        <Ionicons name="calendar-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                        <Text style={styles.cardTitle}>Medication schedule</Text>
+                    </View>
 
                     {count > 0 ? (
                         <>
@@ -175,7 +186,10 @@ export default function MedicationDetails() {
                 </TouchableOpacity>
 
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Reminder settings</Text>
+                    <View style={styles.cardRowLeft}>
+                        <Ionicons name="notifications-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                        <Text style={styles.cardTitle}>Reminder settings</Text>
+                    </View>
                     <Text style={styles.cardSubtitle}>
                         {detail.reminder_enabled
                             ? "Critical reminders are on"
@@ -183,25 +197,38 @@ export default function MedicationDetails() {
                     </Text>
                 </View>
 
-                {/* Action buttons */}
                 <TouchableOpacity
                     style={styles.actionTextButton}
                     onPress={toggleReminders}
                 >
-                    <Text style={styles.actionText}>
-                        {detail.reminder_enabled
-                            ? "Pause reminders"
-                            : "Resume reminders"}
-                    </Text>
+                    <View style={styles.cardRowLeft}>
+                        <Ionicons
+                            name={detail.reminder_enabled ? "pause-outline" : "play-outline"}
+                            size={20}
+                            color="#ff8c00"
+                            style={{ marginRight: 8 }}
+                        />
+                        <Text style={styles.actionText}>
+                            {detail.reminder_enabled
+                                ? "Pause reminders"
+                                : "Resume reminders"}
+                        </Text>
+                    </View>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                     style={[styles.actionTextButton, styles.deleteTextButton]}
                     onPress={deleteMedication}
                 >
-                    <Text style={[styles.actionText, styles.deleteText]}>
-                        Delete medication
-                    </Text>
+                    <View style={styles.cardRowLeft}>
+                        <Ionicons
+                            name="trash-outline"
+                            size={20}
+                            color="#ff4444"
+                            style={{ marginRight: 8 }}
+                        />
+                        <Text style={[styles.actionText, styles.deleteText]}>Delete medication</Text>
+                    </View>
                 </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
@@ -220,6 +247,8 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#90e0ef",
     },
+    cardRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    cardRowLeft: { flexDirection: "row", alignItems: "center" },
     cardTitle: { fontSize: 18, fontWeight: "600", color: "#03045e" },
     cardSubtitle: { fontSize: 14, color: "#555", marginTop: 4 },
     badge: {
