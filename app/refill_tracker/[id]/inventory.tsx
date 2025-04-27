@@ -194,7 +194,7 @@ const InventoryDetail: React.FC = () => {
 
     return (
         <SafeAreaView style={styles.safeContainer}>
-            <Header title="Inventory" backRoute="/refill_tracker" />
+            <Header title="Inventory" backRoute={`/refill_tracker/${schedule.id}`} />
             <ScrollView contentContainerStyle={styles.container}>
                 <Image
                     style={styles.medImage}
