@@ -18,17 +18,18 @@ import logo from "../assets/images/logo.png";
 import styles from "./Register.styles";
 import { COLORS } from "../styles/colors";
 
-const Register = () => {
+export default function Register() {
     const router = useRouter();
+
     const [name, setName] = useState("");
     const [role, setRole] = useState<"patient" | "doctor">("patient");
     const [licenseNumber, setLicenseNumber] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [dob, setDob] = useState<Date | null>(null);
+    const [showDatePicker, setShowDatePicker] = useState(false);
     const [phone, setPhone] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-    const [showDatePicker, setShowDatePicker] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);
 
@@ -180,23 +181,14 @@ const Register = () => {
                                     : "Select Date of Birth"}
                             </Text>
                         </TouchableOpacity>
-
                         {showDatePicker && (
                             <DateTimePicker
                                 value={dob || new Date(2000, 0, 1)}
                                 mode="date"
-                                display="spinner"
-                                onChange={(event, selectedDate) => {
+                                display="default"
+                                onChange={(_, selected) => {
                                     setShowDatePicker(false);
-                                    if (selectedDate) {
-                                        setDob(
-                                            new Date(
-                                                selectedDate.getFullYear(),
-                                                selectedDate.getMonth(),
-                                                selectedDate.getDate()
-                                            )
-                                        );
-                                    }
+                                    if (selected) setDob(selected);
                                 }}
                             />
                         )}
@@ -253,6 +245,4 @@ const Register = () => {
             </ScrollView>
         </LinearGradient>
     );
-};
-
-export default Register;
+}
