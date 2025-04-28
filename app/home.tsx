@@ -184,7 +184,7 @@ export default function Home() {
     const goToProfile = () => router.push("/(profile)");
     const handleAddMedication = () => router.push("/(add_medication)");
     const handleCalendarView = () => {
-        // router.push("/calendar")
+        router.push("/(calendar_view)")
     };
     const handleHistoryLog = () => {
         // router.push("/history")
