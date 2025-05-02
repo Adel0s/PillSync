@@ -165,8 +165,15 @@ export default function SchedulePillList() {
             ]);
     }
 
+    // UPDATED: delete all reminders then switch to As-needed
     async function handleConvertToAsNeeded() {
         setLoading(true);
+
+        // 1) șterge toate reminderele existente
+        await Promise.all(times.map(t => deleteScheduleTime(t.id)));
+        setTimes([]);
+
+        // 2) setează modul As-needed
         const { error } = await setAsNeeded(scheduleId);
         if (error) {
             console.error(error);
@@ -175,6 +182,7 @@ export default function SchedulePillList() {
             setAsNeededState(true);
             Alert.alert("As-needed mode", "Switched to As-needed.");
         }
+
         setLoading(false);
     }
 
@@ -284,7 +292,7 @@ export default function SchedulePillList() {
                     />
 
                     <View style={styles.footer}>
-                        {times.length < 3 ? (
+                        {times.length < 4 ? (
                             <TouchableOpacity style={styles.addButton} onPress={openAdd}>
                                 <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
                                 <Text style={styles.addText}>Add reminder time</Text>
