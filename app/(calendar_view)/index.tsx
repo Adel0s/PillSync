@@ -1,4 +1,3 @@
-// app/calendar.tsx
 import React, { useEffect, useState } from "react";
 import {
     SafeAreaView,
@@ -32,6 +31,8 @@ export default function CalendarView() {
     const [statsByDay, setStatsByDay] = useState<Record<string, DayStats>>({});
     const [logsByDay, setLogsByDay] = useState<Record<string, PillLog[]>>({});
     const [timesById, setTimesById] = useState<Record<number, string>>({});
+    const [timeToSchedule, setTimeToSchedule] = useState<Record<number, number>>({});
+    const [scheduleNamesById, setScheduleNamesById] = useState<Record<number, string>>({});
     const [loading, setLoading] = useState(false);
 
     const [modalVisible, setModalVisible] = useState(false);
@@ -44,25 +45,35 @@ export default function CalendarView() {
         });
     }, []);
 
-    // 2) Fetch când schimbă luna/user
+    // 2) Fetch când schimbă luna sau user
     useEffect(() => {
         if (!userId) return;
-        const y = currentMonth.getFullYear();
-        const m = currentMonth.getMonth() + 1;
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth() + 1;
         setLoading(true);
-        fetchCalendarData(userId, y, m)
-            .then(({ statsByDay, logsByDay, timesById }) => {
+
+        fetchCalendarData(userId, year, month)
+            .then(({ statsByDay, logsByDay, timesById, timeToSchedule, scheduleNamesById }) => {
                 setStatsByDay(statsByDay);
                 setLogsByDay(logsByDay);
                 setTimesById(timesById);
+                setTimeToSchedule(timeToSchedule);
+                setScheduleNamesById(scheduleNamesById);
             })
             .catch(console.error)
             .finally(() => setLoading(false));
     }, [userId, currentMonth]);
 
     // Grid helper
-    const firstWeekday = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getDay();
-    const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
+    const firstWeekday = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(), 1
+    ).getDay();
+    const daysInMonth = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth() + 1, 0
+    ).getDate();
+
     const cells: { label: number | null; dateStr?: string }[] = [];
     for (let i = 0; i < firstWeekday; i++) cells.push({ label: null });
     for (let d = 1; d <= daysInMonth; d++) {
@@ -72,45 +83,50 @@ export default function CalendarView() {
     }
     while (cells.length % 7 !== 0) cells.push({ label: null });
 
-    // Month nav
+    // Month navigation
     const prevMonth = () =>
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
     const nextMonth = () =>
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
-    // Calcul procent mediu aderare — ADĂUGIRI
+    // Procent mediu aderare
     const dayKeys = Object.keys(statsByDay);
-    const averageRatio =
-        dayKeys.length > 0
-            ? dayKeys
-                .map(day => statsByDay[day].taken / statsByDay[day].totalPlanned)
-                .reduce((a, b) => a + b, 0) / dayKeys.length
-            : 0;
-    const adherencePercent = Math.round(averageRatio * 100);
+    const avgRatio = dayKeys.length
+        ? dayKeys
+            .map(d => statsByDay[d].taken / statsByDay[d].totalPlanned)
+            .reduce((a, b) => a + b, 0) / dayKeys.length
+        : 0;
+    const adherencePercent = Math.round(avgRatio * 100);
 
-    // Render log pentru modal
+    // Render log în modal
     const renderLog = ({ item }: { item: PillLog }) => {
-        const time = timesById[item.schedule_time_id] || item.taken_at.substr(11, 5);
-        const icon =
-            item.status === "taken" ? "checkmark-circle" :
-                item.status === "skipped" ? "close-circle" :
-                    "help-circle";
+        const schedId = timeToSchedule[item.schedule_time_id];
+        const medName = scheduleNamesById[schedId] || "–";
+        const scheduledTime = timesById[item.schedule_time_id] || "--:--";
+        const actualTime = item.taken_at.substr(11, 5);
+
         const iconColor =
-            item.status === "taken" ? "#20A0D8" :
-                item.status === "skipped" ? "#FF3B30" :
-                    "#FF9500";
+            item.status === "taken" ? "#20A0D8"
+                : item.status === "skipped" ? "#FF3B30"
+                    : "#FF9500";
+        const icon =
+            item.status === "taken" ? "checkmark-circle"
+                : item.status === "skipped" ? "close-circle"
+                    : "help-circle";
+
         return (
             <View style={styles.logRow}>
-                <Text style={styles.logText}>{time}</Text>
+                <Text style={styles.medName}>{medName}</Text>
+                <Text style={styles.logTime}>{scheduledTime}</Text>
+                <Text style={styles.logTime}>{actualTime}</Text>
                 <Ionicons name={icon} size={20} color={iconColor} />
-                {item.note ? <Text style={styles.noteText}>{item.note}</Text> : null}
+                {item.note && <Text style={styles.noteText}>{item.note}</Text>}
             </View>
         );
     };
 
     return (
         <SafeAreaView style={styles.safeContainer}>
-            {/* Header comun */}
             <Header title="Calendar View" backRoute="/home" />
 
             <View style={styles.container}>
@@ -120,9 +136,7 @@ export default function CalendarView() {
                         <Ionicons name="chevron-back" size={28} color="#fff" />
                     </TouchableOpacity>
                     <Text style={styles.navTitle}>
-                        {currentMonth.toLocaleString("default", {
-                            month: "long", year: "numeric"
-                        })}
+                        {currentMonth.toLocaleString("default", { month: "long", year: "numeric" })}
                     </Text>
                     <TouchableOpacity onPress={nextMonth}>
                         <Ionicons name="chevron-forward" size={28} color="#fff" />
@@ -136,7 +150,7 @@ export default function CalendarView() {
                     ))}
                 </View>
 
-                {/* Grid sau loader */}
+                {/* Grid */}
                 {loading ? (
                     <ActivityIndicator size="large" color="#20A0D8" style={{ marginTop: 40 }} />
                 ) : (
@@ -146,9 +160,7 @@ export default function CalendarView() {
                             if (c.label && c.dateStr && statsByDay[c.dateStr]) {
                                 const { taken, totalPlanned } = statsByDay[c.dateStr];
                                 const pct = taken / totalPlanned;
-                                bg = pct === 1 ? "#20A0D8"
-                                    : pct >= 0.5 ? "#FF9500"
-                                        : "#FF3B30";
+                                bg = pct === 1 ? "#20A0D8" : pct >= 0.5 ? "#FF9500" : "#FF3B30";
                             }
                             return (
                                 <TouchableOpacity
@@ -169,32 +181,27 @@ export default function CalendarView() {
                     </View>
                 )}
 
+                {/* Legendă & statistici */}
                 <View style={styles.summaryContainer}>
-                    <Text style={styles.adherenceText}>
-                        Procent aderare: {adherencePercent}%
-                    </Text>
+                    <Text style={styles.adherenceText}>Procent aderare: {adherencePercent}%</Text>
                     <View style={styles.legendContainer}>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, { backgroundColor: "#20A0D8" }]} />
-                            <Text style={styles.legendText}>100% luate</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, { backgroundColor: "#FF9500" }]} />
-                            <Text style={styles.legendText}>50–99%</Text>
-                        </View>
-                        <View style={styles.legendItem}>
-                            <View style={[styles.legendColor, { backgroundColor: "#FF3B30" }]} />
-                            <Text style={styles.legendText}>50%</Text>
-                        </View>
+                        {[
+                            { col: "#20A0D8", txt: "100% luate" },
+                            { col: "#FF9500", txt: "50–99%" },
+                            { col: "#FF3B30", txt: "<50%" },
+                        ].map(({ col, txt }) => (
+                            <View key={txt} style={styles.legendItem}>
+                                <View style={[styles.legendColor, { backgroundColor: col }]} />
+                                <Text style={styles.legendText}>{txt}</Text>
+                            </View>
+                        ))}
                     </View>
                     <TouchableOpacity
                         style={styles.reportButton}
-                        onPress={() => {
-                            exportCalendarReport({
-                                monthTitle: currentMonth.toLocaleString("default", { month: "long", year: "numeric" }),
-                                statsByDay,
-                            });
-                        }}
+                        onPress={() => exportCalendarReport({
+                            monthTitle: currentMonth.toLocaleString("default", { month: "long", year: "numeric" }),
+                            statsByDay
+                        })}
                     >
                         <Text style={styles.reportButtonText}>Vezi rapoarte detaliate</Text>
                     </TouchableOpacity>
@@ -215,9 +222,7 @@ export default function CalendarView() {
                                 keyExtractor={item => item.id.toString()}
                                 renderItem={renderLog}
                                 ListEmptyComponent={
-                                    <Text style={{ textAlign: "center", marginTop: 20 }}>
-                                        Nicio înregistrare
-                                    </Text>
+                                    <Text style={{ textAlign: "center", marginTop: 20 }}>Nicio înregistrare</Text>
                                 }
                             />
                             <TouchableOpacity
@@ -237,63 +242,30 @@ export default function CalendarView() {
 const styles = StyleSheet.create({
     safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
     container: { flex: 1, padding: 16, backgroundColor: "#f9f9f9" },
-    nav: {
-        flexDirection: "row",
-        backgroundColor: "#20A0D8",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: 12,
-        borderRadius: 8
-    },
+    nav: { flexDirection: "row", backgroundColor: "#20A0D8", alignItems: "center", justifyContent: "space-between", padding: 12, borderRadius: 8 },
     navTitle: { color: "#fff", fontSize: 18, fontWeight: "bold" },
     weekRow: { flexDirection: "row", marginTop: 16 },
     weekDay: { flex: 1, textAlign: "center", fontWeight: "600", color: "#333" },
     grid: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
-    cell: {
-        width: CELL_SIZE, height: CELL_SIZE,
-        margin: CELL_MARGIN, borderRadius: 4,
-        alignItems: "center", justifyContent: "center"
-    },
+    cell: { width: CELL_SIZE, height: CELL_SIZE, margin: CELL_MARGIN, borderRadius: 4, alignItems: "center", justifyContent: "center" },
     cellText: { color: "#fff", fontWeight: "600" },
 
-    /* — ADĂUGIRI: Legendă & statistici */
     summaryContainer: { marginTop: 24, alignItems: "center" },
     adherenceText: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
     legendContainer: { flexDirection: "row", marginBottom: 12 },
     legendItem: { flexDirection: "row", alignItems: "center", marginHorizontal: 8 },
     legendColor: { width: 16, height: 16, borderRadius: 4, marginRight: 4 },
     legendText: { fontSize: 14, color: "#333" },
-    reportButton: {
-        backgroundColor: "#20A0D8",
-        paddingVertical: 10,
-        paddingHorizontal: 20,
-        borderRadius: 8
-    },
+    reportButton: { backgroundColor: "#20A0D8", paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
     reportButtonText: { color: "#fff", fontWeight: "600" },
 
-    /* Modal styles (rămase neschimbate) */
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        justifyContent: "flex-end"
-    },
-    modalContent: {
-        backgroundColor: "#fff",
-        borderTopLeftRadius: 16,
-        borderTopRightRadius: 16,
-        maxHeight: "60%",
-        padding: 16
-    },
+    modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+    modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: "60%", padding: 16 },
     modalTitle: { fontSize: 18, fontWeight: "bold", marginBottom: 12, textAlign: "center" },
-    logRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: "#eee"
-    },
-    logText: { flex: 0.2, fontSize: 16 },
-    noteText: { flex: 0.7, fontSize: 14, color: "#555", marginLeft: 8 },
+    logRow: { flexDirection: "row", alignItems: "center", paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#eee" },
+    medName: { flex: 0.4, fontSize: 16, fontWeight: "600", color: "#333" },
+    logTime: { flex: 0.2, fontSize: 14, color: "#555", textAlign: "center" },
+    noteText: { flex: 0.4, fontSize: 14, color: "#555", marginLeft: 8 },
     closeButton: { marginTop: 12, alignSelf: "center", padding: 10, backgroundColor: "#20A0D8", borderRadius: 8 },
     closeText: { color: "#fff", fontWeight: "bold" },
 });
