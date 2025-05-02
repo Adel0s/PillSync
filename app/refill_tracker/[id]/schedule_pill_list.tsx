@@ -165,8 +165,20 @@ export default function SchedulePillList() {
             ]);
     }
 
+    async function handleConvertToAsNeeded() {
+        setLoading(true);
+        const { error } = await setAsNeeded(scheduleId);
+        if (error) {
+            console.error(error);
+            Alert.alert("Error", "Could not switch to As-needed mode.");
+        } else {
+            setAsNeededState(true);
+            Alert.alert("As-needed mode", "Switched to As-needed.");
+        }
+        setLoading(false);
+    }
+
     async function handleConvertBack() {
-        // 1) unset as_needed
         console.log("Converting back to fixed schedule...");
         setLoading(true);
         const { error } = await unsetAsNeeded(scheduleId);
@@ -176,7 +188,6 @@ export default function SchedulePillList() {
             return;
         }
         setAsNeededState(false);
-        // 2) immediately open the picker to add your first fixed reminder time
         openAdd();
         setLoading(false);
     }
@@ -274,12 +285,12 @@ export default function SchedulePillList() {
 
                     <View style={styles.footer}>
                         {times.length < 3 ? (
-                            <TouchableOpacity style={styles.addButton} onPress={() => openAdd()}>
+                            <TouchableOpacity style={styles.addButton} onPress={openAdd}>
                                 <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
                                 <Text style={styles.addText}>Add reminder time</Text>
                             </TouchableOpacity>
                         ) : (
-                            <TouchableOpacity style={styles.convertButton} onPress={handleConvertBack}>
+                            <TouchableOpacity style={styles.convertButton} onPress={handleConvertToAsNeeded}>
                                 <Text style={styles.convertText}>Switch to As-needed</Text>
                             </TouchableOpacity>
                         )}
