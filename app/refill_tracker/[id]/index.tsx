@@ -198,17 +198,17 @@ export default function MedicationDetails() {
                 </View>
 
                 <TouchableOpacity
-                    style={styles.actionTextButton}
+                    style={styles.reminderButton}
                     onPress={toggleReminders}
                 >
                     <View style={styles.cardRowLeft}>
                         <Ionicons
                             name={detail.reminder_enabled ? "pause-outline" : "play-outline"}
                             size={20}
-                            color="#ff8c00"
-                            style={{ marginRight: 8 }}
+                            color="#fff"
+                            style={styles.buttonIcon}
                         />
-                        <Text style={styles.actionText}>
+                        <Text style={styles.buttonText}>
                             {detail.reminder_enabled
                                 ? "Pause reminders"
                                 : "Resume reminders"}
@@ -217,17 +217,17 @@ export default function MedicationDetails() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.actionTextButton, styles.deleteTextButton]}
+                    style={[styles.reminderButton, styles.deleteButton]}
                     onPress={deleteMedication}
                 >
                     <View style={styles.cardRowLeft}>
                         <Ionicons
                             name="trash-outline"
                             size={20}
-                            color="#ff4444"
-                            style={{ marginRight: 8 }}
+                            color="#fff"
+                            style={styles.buttonIcon}
                         />
-                        <Text style={[styles.actionText, styles.deleteText]}>Delete medication</Text>
+                        <Text style={styles.buttonText}>Delete medication</Text>
                     </View>
                 </TouchableOpacity>
             </ScrollView>
@@ -264,4 +264,26 @@ const styles = StyleSheet.create({
     actionText: { fontSize: 16, color: "#ff8c00" },
     deleteTextButton: { marginTop: 8 },
     deleteText: { color: "#ff4444" },
+    // new “pill” button style
+    reminderButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#ff8c00',
+        paddingVertical: 14,
+        borderRadius: 8,
+        marginTop: 16,
+    },
+    deleteButton: {
+        backgroundColor: '#ff4444',
+        marginTop: 8,
+    },
+    buttonIcon: {
+        marginRight: 8,
+    },
+    buttonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
 });

@@ -22,6 +22,7 @@ import {
     updateScheduleTime,
     deleteScheduleTime,
     setAsNeeded,
+    unsetAsNeeded,
 } from "../../../services/medicationScheduleService";
 
 export default function SchedulePillList() {
@@ -91,6 +92,7 @@ export default function SchedulePillList() {
             setAdding(false);
             return;
         }
+
         const hh = selected.getHours().toString().padStart(2, "0");
         const mm = selected.getMinutes().toString().padStart(2, "0");
         const newTime = `${hh}:${mm}:00`;
@@ -148,43 +150,35 @@ export default function SchedulePillList() {
 
                             if (newList.length === 0 && !asNeeded) {
                                 const { error: e2 } = await setAsNeeded(scheduleId);
-                                if (e2) {
-                                    console.error(e2);
-                                    Alert.alert(
-                                        "Error",
-                                        "Failed to switch to As-needed mode."
-                                    );
-                                } else {
+                                if (!e2) {
                                     setAsNeededState(true);
-                                    Alert.alert(
-                                        "As-needed mode",
-                                        "No fixed reminders left—switched to As-needed."
-                                    );
+                                    Alert.alert("As-needed mode", "Switched to As-needed.");
+                                } else {
+                                    console.error(e2);
+                                    Alert.alert("Error", "Failed to switch to As-needed mode.");
                                 }
                             }
                         }
                         setLoading(false);
                     },
                 },
-            ],
-            { cancelable: true }
-        );
+            ]);
     }
 
-    async function convertToAsNeeded() {
+    async function handleConvertBack() {
+        // 1) unset as_needed
+        console.log("Converting back to fixed schedule...");
         setLoading(true);
-        const { error } = await setAsNeeded(scheduleId);
-        setLoading(false);
+        const { error } = await unsetAsNeeded(scheduleId);
         if (error) {
-            console.error(error);
-            Alert.alert("Error", "Failed to set As-needed mode.");
-        } else {
-            setAsNeededState(true);
-            Alert.alert(
-                "As-needed mode",
-                "This medication is now marked 'As needed'."
-            );
+            Alert.alert("Error", "Could not switch back to fixed schedule.");
+            setLoading(false);
+            return;
         }
+        setAsNeededState(false);
+        // 2) immediately open the picker to add your first fixed reminder time
+        openAdd();
+        setLoading(false);
     }
 
     function fmt(ts: string) {
@@ -247,7 +241,6 @@ export default function SchedulePillList() {
                 </View>
             </View>
 
-            {/* Section header */}
             <Text style={styles.sectionHeader}>Reminder details</Text>
 
             {asNeeded ? (
@@ -255,7 +248,9 @@ export default function SchedulePillList() {
                     <Text style={styles.infoText}>
                         This medication is set to <Text style={{ fontWeight: "bold" }}>As needed</Text>.
                     </Text>
-                    <Text style={styles.subInfo}>No fixed reminder times.</Text>
+                    <TouchableOpacity style={styles.convertButton} onPress={handleConvertBack}>
+                        <Text style={styles.convertText}>Switch to fixed schedule</Text>
+                    </TouchableOpacity>
                 </View>
             ) : (
                 <>
@@ -279,12 +274,12 @@ export default function SchedulePillList() {
 
                     <View style={styles.footer}>
                         {times.length < 3 ? (
-                            <TouchableOpacity style={styles.addButton} onPress={openAdd}>
+                            <TouchableOpacity style={styles.addButton} onPress={() => openAdd()}>
                                 <Ionicons name="add-circle-outline" size={20} color="#fff" style={{ marginRight: 6 }} />
                                 <Text style={styles.addText}>Add reminder time</Text>
                             </TouchableOpacity>
                         ) : (
-                            <TouchableOpacity style={styles.convertButton} onPress={convertToAsNeeded}>
+                            <TouchableOpacity style={styles.convertButton} onPress={handleConvertBack}>
                                 <Text style={styles.convertText}>Switch to As-needed</Text>
                             </TouchableOpacity>
                         )}
@@ -328,7 +323,6 @@ const styles = StyleSheet.create({
     },
     center: { flex: 1, justifyContent: "center", alignItems: "center" },
     infoText: { fontSize: 16, color: "#555", textAlign: "center", margin: 16 },
-    subInfo: { marginTop: 12, color: "#777", textAlign: "center" },
     list: { padding: 16 },
     sep: { height: 12 },
     row: {
@@ -364,6 +358,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#ff8c00",
         alignItems: "center",
+        marginTop: 12,
     },
     convertText: { color: "#ff8c00", fontSize: 16, fontWeight: "600" },
 });
