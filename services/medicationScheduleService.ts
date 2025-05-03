@@ -12,6 +12,7 @@ export interface MedicationScheduleDetails {
     duration_days: number;
     remaining_quantity: number;
     reminder_enabled: boolean;
+    pill_reminders_enabled: boolean;
     as_needed: boolean;
     medication: { name: string };
     medication_schedule_times: ScheduleTime[];
@@ -28,6 +29,7 @@ export async function fetchScheduleDetails(scheduleId: number) {
       remaining_quantity,
       reminder_enabled,
       as_needed,
+      pill_reminders_enabled,
       medication(name),
       medication_schedule_times(id, time)
     `)
@@ -125,4 +127,15 @@ export async function unsetAsNeeded(scheduleId: number) {
         .update({ as_needed: false })
         .eq("id", scheduleId);
     return { error };
+}
+
+export async function setPillReminders(
+    scheduleId: number,
+    enabled: boolean
+) {
+    const { data, error } = await supabase
+        .from("medication_schedule")
+        .update({ pill_reminders_enabled: enabled })
+        .eq("id", scheduleId);
+    return { data, error };
 }

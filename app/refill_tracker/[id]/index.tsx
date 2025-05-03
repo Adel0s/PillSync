@@ -9,18 +9,18 @@ import {
     ActivityIndicator,
     Alert,
 } from "react-native";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../../lib/supabase";
 import Header from "../../../components/Header";
 
-// 1) Extend the interface with schedule_times
 interface MedicationDetails {
     id: number;
     start_date: string;
     duration_days: number;
     remaining_quantity: number;
     reminder_enabled: boolean;
+    pill_reminders_enabled: boolean;
     medication?: { name: string };
     medication_schedule_times?: { time: string }[];
 }
@@ -41,9 +41,9 @@ export default function MedicationDetails() {
         const { data, error } = await supabase
             .from("medication_schedule")
             .select(`
-            *,
-            medication(*),
-            medication_schedule_times(time)
+        *,
+        medication(*),
+        medication_schedule_times(time)
       `)
             .eq("id", scheduleId)
             .single();
@@ -62,7 +62,7 @@ export default function MedicationDetails() {
         setLoading(true);
         await supabase
             .from("medication_schedule")
-            .update({ reminder_enabled: !detail.reminder_enabled })
+            .update({ pill_reminders_enabled: !detail.pill_reminders_enabled })
             .eq("id", detail.id);
         await fetchDetail(detail.id);
     }
@@ -138,22 +138,32 @@ export default function MedicationDetails() {
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Medication details" backRoute="/refill_tracker" />
             <ScrollView contentContainerStyle={styles.container}>
+                {/* Medication Name */}
                 <View style={styles.card}>
                     <View style={styles.cardRowLeft}>
-                        <Ionicons name="medical-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                        <Ionicons
+                            name="medical-outline"
+                            size={24}
+                            color="#03045e"
+                            style={{ marginRight: 8 }}
+                        />
                         <Text style={styles.cardTitle}>{name}</Text>
                     </View>
                 </View>
 
+                {/* Inventory */}
                 <TouchableOpacity
                     style={styles.card}
-                    onPress={() =>
-                        router.push(`/refill_tracker/${id}/inventory`)
-                    }
+                    onPress={() => router.push(`/refill_tracker/${id}/inventory`)}
                 >
                     <View style={styles.cardRow}>
                         <View style={styles.cardRowLeft}>
-                            <Ionicons name="layers-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                            <Ionicons
+                                name="layers-outline"
+                                size={24}
+                                color="#03045e"
+                                style={{ marginRight: 8 }}
+                            />
                             <Text style={styles.cardTitle}>Inventory</Text>
                         </View>
                         <View style={styles.badge}>
@@ -164,15 +174,22 @@ export default function MedicationDetails() {
                     </View>
                 </TouchableOpacity>
 
+                {/* Medication Schedule */}
                 <TouchableOpacity
                     style={styles.card}
-                    onPress={() => router.push(`/refill_tracker/${id}/schedule_pill_list`)}
+                    onPress={() =>
+                        router.push(`/refill_tracker/${id}/schedule_pill_list`)
+                    }
                 >
                     <View style={styles.cardRowLeft}>
-                        <Ionicons name="calendar-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                        <Ionicons
+                            name="calendar-outline"
+                            size={24}
+                            color="#03045e"
+                            style={{ marginRight: 8 }}
+                        />
                         <Text style={styles.cardTitle}>Medication schedule</Text>
                     </View>
-
                     {count > 0 ? (
                         <>
                             <Text style={styles.cardSubtitle}>{scheduleText}</Text>
@@ -185,37 +202,25 @@ export default function MedicationDetails() {
                     )}
                 </TouchableOpacity>
 
-                <View style={styles.card}>
+                {/* REMINDER SETTINGS — now tappable */}
+                <TouchableOpacity style={styles.card} onPress={toggleReminders}>
                     <View style={styles.cardRowLeft}>
-                        <Ionicons name="notifications-outline" size={24} color="#03045e" style={{ marginRight: 8 }} />
+                        <Ionicons
+                            name="notifications-outline"
+                            size={24}
+                            color="#03045e"
+                            style={{ marginRight: 8 }}
+                        />
                         <Text style={styles.cardTitle}>Reminder settings</Text>
                     </View>
                     <Text style={styles.cardSubtitle}>
-                        {detail.reminder_enabled
+                        {detail.pill_reminders_enabled
                             ? "Critical reminders are on"
                             : "Critical reminders are off"}
                     </Text>
-                </View>
-
-                <TouchableOpacity
-                    style={styles.reminderButton}
-                    onPress={toggleReminders}
-                >
-                    <View style={styles.cardRowLeft}>
-                        <Ionicons
-                            name={detail.reminder_enabled ? "pause-outline" : "play-outline"}
-                            size={20}
-                            color="#fff"
-                            style={styles.buttonIcon}
-                        />
-                        <Text style={styles.buttonText}>
-                            {detail.reminder_enabled
-                                ? "Pause reminders"
-                                : "Resume reminders"}
-                        </Text>
-                    </View>
                 </TouchableOpacity>
 
+                {/* DELETE MEDICATION */}
                 <TouchableOpacity
                     style={[styles.reminderButton, styles.deleteButton]}
                     onPress={deleteMedication}
@@ -247,7 +252,11 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#90e0ef",
     },
-    cardRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+    cardRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+    },
     cardRowLeft: { flexDirection: "row", alignItems: "center" },
     cardTitle: { fontSize: 18, fontWeight: "600", color: "#03045e" },
     cardSubtitle: { fontSize: 14, color: "#555", marginTop: 4 },
@@ -260,30 +269,25 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
     },
     badgeText: { color: "#03045e", fontSize: 14 },
-    actionTextButton: { marginTop: 16, alignItems: "center" },
-    actionText: { fontSize: 16, color: "#ff8c00" },
-    deleteTextButton: { marginTop: 8 },
-    deleteText: { color: "#ff4444" },
-    // new “pill” button style
     reminderButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#ff8c00',
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "#ff8c00",
         paddingVertical: 14,
         borderRadius: 8,
         marginTop: 16,
     },
     deleteButton: {
-        backgroundColor: '#ff4444',
+        backgroundColor: "#ff4444",
         marginTop: 8,
     },
     buttonIcon: {
         marginRight: 8,
     },
     buttonText: {
-        color: '#fff',
+        color: "#fff",
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: "600",
     },
 });

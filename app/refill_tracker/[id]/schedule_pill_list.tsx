@@ -23,6 +23,7 @@ import {
     deleteScheduleTime,
     setAsNeeded,
     unsetAsNeeded,
+    setPillReminders
 } from "../../../services/medicationScheduleService";
 
 export default function SchedulePillList() {
@@ -32,6 +33,7 @@ export default function SchedulePillList() {
 
     const [times, setTimes] = useState<ScheduleTime[]>([]);
     const [asNeeded, setAsNeededState] = useState(false);
+    const [pillRemindersEnabled, setPillRemindersEnabled] = useState(true);
     const [startDate, setStartDate] = useState<string>("");
     const [durationDays, setDurationDays] = useState<number>(0);
     const [loading, setLoading] = useState(true);
@@ -57,6 +59,7 @@ export default function SchedulePillList() {
         } else {
             setAsNeededState(data.as_needed);
             setTimes(data.medication_schedule_times || []);
+            setPillRemindersEnabled(data.pill_reminders_enabled);
             setStartDate(data.start_date);
             setDurationDays(data.duration_days);
         }
@@ -107,6 +110,10 @@ export default function SchedulePillList() {
                 setTimes(ts =>
                     [...ts, data].sort((a, b) => a.time.localeCompare(b.time))
                 );
+                if (!pillRemindersEnabled) {
+                    const { error: err2 } = await setPillReminders(scheduleId, true);
+                    if (!err2) setPillRemindersEnabled(true);
+                }
                 Alert.alert("Success", "Reminder time added.");
             }
         } else if (editingId !== null) {
@@ -150,6 +157,7 @@ export default function SchedulePillList() {
 
                             if (newList.length === 0 && !asNeeded) {
                                 const { error: e2 } = await setAsNeeded(scheduleId);
+                                await setPillReminders(scheduleId, false);
                                 if (!e2) {
                                     setAsNeededState(true);
                                     Alert.alert("As-needed mode", "Switched to As-needed.");

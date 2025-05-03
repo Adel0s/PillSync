@@ -122,6 +122,13 @@ export default function MedicationSchedulePage() {
         }
     }, [selectedFrequency]);
 
+    useEffect(() => {
+        // if is selected As needed mode, doesn't make sense pill_reminders_enabled = true
+        if (selectedFrequency === 0) {
+            setEnableReminders(false);
+        }
+    }, [selectedFrequency]);
+
     const handleAddMedication = async () => {
         if (dosage.trim() === "") {
             setDosageError("Dosage is required.");
@@ -159,6 +166,7 @@ export default function MedicationSchedulePage() {
                         remaining_quantity: initialQuantity,
                         instructions: instructions,
                         dosage: dosage,
+                        pill_reminders_enabled: enableReminders,
                     },
                 ])
                 .select("*")
@@ -379,8 +387,17 @@ export default function MedicationSchedulePage() {
                         <Switch
                             trackColor={{ false: "#767577", true: "#90e0ef" }}
                             thumbColor={enableReminders ? "#0077b6" : "#f4f3f4"}
-                            onValueChange={setEnableReminders}
                             value={enableReminders}
+                            onValueChange={(newVal) => {
+                                if (selectedFrequency === 0 && newVal) {
+                                    Alert.alert(
+                                        "Not allowed",
+                                        "You can not turn on pill reminders in As needed mode."
+                                    );
+                                } else {
+                                    setEnableReminders(newVal);
+                                }
+                            }}
                         />
                     </View>
 
