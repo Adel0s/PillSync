@@ -261,7 +261,7 @@ export default function Home() {
                 >
                     <View style={styles.buttonContent}>
                         <Ionicons name="document-text-outline" size={24} color="#fff" style={styles.actionIcon} />
-                        <Text style={styles.actionButtonText}>History Log</Text>
+                        <Text style={styles.actionButtonText}>Pill Interactions</Text>
                     </View>
                 </TouchableOpacity>
                 <TouchableOpacity
