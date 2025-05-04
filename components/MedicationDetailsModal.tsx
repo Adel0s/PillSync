@@ -3,10 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-nati
 import Modal from "react-native-modal";
 
 interface Medication {
+    id: number;
     name: string;
     active_substance: string;
-    quantity: number | null;
-    nr_of_pills: number | null;
+    quantity: number;
+    nr_of_pills: number;
     description: string;
     contraindications: string;
     side_effect: string;
@@ -17,11 +18,25 @@ interface Props {
     isVisible: boolean;
     onClose: () => void;
     medication: Medication;
+    status: "none" | "taken" | "skipped" | "snoozed";
+    onTake: () => void;
+    onSkip: () => void;
+    onSnooze: () => void;
 }
 
-const MedicationDetailsModal = ({ isVisible, onClose, medication }: Props) => {
+const MedicationDetailsModal = ({
+    isVisible,
+    onClose,
+    medication,
+    status,
+    onTake,
+    onSkip,
+    onSnooze,
+}: Props) => {
+    const disabled = status !== "none";
+
     return (
-        <Modal isVisible={isVisible} onBackdropPress={onClose} style={styles.modal}>
+        <Modal isVisible={isVisible} onBackdropPress={onClose}>
             <View style={styles.container}>
                 <Text style={styles.title}>{medication.name}</Text>
                 <ScrollView style={styles.scrollArea}>
@@ -32,6 +47,47 @@ const MedicationDetailsModal = ({ isVisible, onClose, medication }: Props) => {
                     <Detail label="Contraindications" value={medication.contraindications || "N/A"} />
                     <Detail label="Side Effects" value={medication.side_effect || "N/A"} />
                 </ScrollView>
+
+                <View style={styles.actionsRow}>
+                    <TouchableOpacity
+                        style={[styles.actionsButton, disabled && styles.disabledButton]}
+                        onPress={onTake}
+                        disabled={disabled}
+                    >
+                        <Text style={[styles.actionsButtonText, disabled && styles.disabledText]}>
+                            {status === "taken" ? "✅ Taken" : "Take"}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.actionsButton,
+                            { backgroundColor: "#e74c3c" },
+                            disabled && styles.disabledButton,
+                        ]}
+                        onPress={onSkip}
+                        disabled={disabled}
+                    >
+                        <Text style={[styles.actionsButtonText, disabled && styles.disabledText]}>
+                            {status === "skipped" ? "🚫 Skipped" : "Skip"}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[
+                            styles.actionsButton,
+                            { backgroundColor: "#f1c40f" },
+                            disabled && styles.disabledButton,
+                        ]}
+                        onPress={onSnooze}
+                        disabled={disabled}
+                    >
+                        <Text style={[styles.actionsButtonText, disabled && styles.disabledText]}>
+                            {status === "snoozed" ? "⏰ Snoozed" : "Snooze"}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
                 <TouchableOpacity style={styles.closeButton} onPress={onClose}>
                     <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
@@ -48,28 +104,23 @@ const Detail = ({ label, value }: { label: string; value: string }) => (
 );
 
 const styles = StyleSheet.create({
-    modal: {
-        justifyContent: "center",
-        margin: 0,
-    },
     container: {
-        backgroundColor: "white",
-        borderRadius: 16,
-        padding: 20,
-        marginHorizontal: 16,
-        maxHeight: "80%",
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 16,
+        maxHeight: "85%",
     },
     scrollArea: {
         marginVertical: 10,
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: "bold",
         textAlign: "center",
         marginBottom: 10,
     },
     detailItem: {
-        marginBottom: 12,
+        marginBottom: 10,
     },
     label: {
         fontSize: 14,
@@ -77,18 +128,41 @@ const styles = StyleSheet.create({
         color: "#333",
     },
     value: {
-        fontSize: 15,
-        color: "#444",
+        marginTop: 2
+    },
+
+    actionsRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginTop: 12,
+    },
+    actionsButton: {
+        flex: 1,
+        paddingVertical: 10,
+        marginHorizontal: 4,
+        borderRadius: 8,
+        backgroundColor: "#0077b6",
+        alignItems: "center",
+    },
+    actionsButtonText: {
+        color: "#fff",
+        fontWeight: "bold",
+    },
+    disabledButton: {
+        opacity: 0.5,
+    },
+    disabledText: {
+        color: "#333",
     },
     closeButton: {
         backgroundColor: "#0077b6",
-        paddingVertical: 12,
-        borderRadius: 10,
+        paddingVertical: 10,
+        borderRadius: 8,
         alignItems: "center",
-        marginTop: 10,
+        marginTop: 12,
     },
     closeButtonText: {
-        color: "white",
+        color: "#fff",
         fontWeight: "bold",
         fontSize: 16,
     },

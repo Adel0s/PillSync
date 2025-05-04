@@ -58,26 +58,26 @@ export default function Home() {
         try {
             const { data, error } = await supabase
                 .from("medication_schedule")
-                .select(
-                    `
-                    id,
-                    start_date,
-                    duration_days,
-                    dosage,
-                    instructions,
-                    remaining_quantity,
-                    medication:medication_id ( id,
-                                                name,
-                                                active_substance,
-                                                quantity,
-                                                nr_of_pills,
-                                                description,
-                                                contraindications,
-                                                side_effect,
-                                                barcode ),
-                    medication_schedule_times ( id, time )
-                    `
-                )
+                .select(`
+          id,
+          start_date,
+          duration_days,
+          dosage,
+          instructions,
+          remaining_quantity,
+          medication:medication_id (
+            id,
+            name,
+            active_substance,
+            quantity,
+            nr_of_pills,
+            description,
+            contraindications,
+            side_effect,
+            barcode
+          ),
+          medication_schedule_times ( id, time )
+        `)
                 .eq("patient_id", user.id);
             if (error) {
                 console.error("Error fetching schedules:", error);
@@ -89,7 +89,9 @@ export default function Home() {
                 setDosesTaken(0);
                 return;
             }
-            console.log(data);
+            // console.log(data);
+            // 2) Filtere schedule items to only include those that are active today
+            // (i.e., start_date <= today <= end_date)
             const today = new Date();
             const filtered = data.filter(schedule => {
                 const start = new Date(schedule.start_date);
@@ -103,57 +105,61 @@ export default function Home() {
                 today.getMonth(),
                 today.getDate()
             );
-            const endOfDay = new Date(
-                today.getFullYear(),
-                today.getMonth(),
-                today.getDate() + 1
-            );
+            const endOfDay = new Date(startOfDay);
+            endOfDay.setDate(endOfDay.getDate() + 1);
 
-            const logPromises: Promise<number>[] = filtered.flatMap(schedule =>
+            // 4) Pentru fiecare oră, ia ultimul log (dacă există)
+            type Item = {
+                scheduleId: number;
+                scheduleTimeId: number;
+                medication: any;
+                dosage: number;
+                time: string;
+                status: "none" | "taken" | "skipped" | "snoozed";
+                snoozedUntil: string | null;
+                remainingQuantity: number;
+            };
+
+            const items: Promise<Item>[] = filtered.flatMap(schedule =>
                 schedule.medication_schedule_times.map(async timeObj => {
-                    const { count, error: logError } = await supabase
+                    const { data: logs, error: logError } = await supabase
                         .from("pill_logs")
-                        .select("id", { count: "exact", head: true })
+                        .select("status, note")
                         .eq("schedule_id", schedule.id)
                         .eq("schedule_time_id", timeObj.id)
                         .gte("taken_at", startOfDay.toISOString())
-                        .lt("taken_at", endOfDay.toISOString());
+                        .lt("taken_at", endOfDay.toISOString())
+                        .order("taken_at", { ascending: false })
+                        .limit(1);
                     if (logError) throw logError;
-                    return count ?? 0;
-                })
-            );
-
-            const counts = await Promise.all(logPromises);
-
-            // 4) Flatten într-un array unde fiecare item e o pastilă la o oră
-            const flat: any[] = [];
-            let idx = 0;
-            filtered.forEach(schedule => {
-                schedule.medication_schedule_times.forEach(timeObj => {
-                    const count = counts[idx++];
-                    flat.push({
+                    const log = logs?.[0] ?? null;
+                    return {
                         scheduleId: schedule.id,
                         scheduleTimeId: timeObj.id,
                         medication: schedule.medication,
                         dosage: schedule.dosage,
                         time: timeObj.time,
-                        isTaken: count > 0,
+                        status: (log?.status as any) ?? "none",
+                        snoozedUntil: log?.status === "snoozed" ? log.note : null,
                         remainingQuantity: schedule.remaining_quantity,
-                    });
-                });
-            });
+                    };
+                })
+            );
+
+            const results = await Promise.all(items);
             // 5) Add a schedule with no times set -> 'As Needed'
             //    (this is a bit of a hack, but it works for now)
             filtered.forEach(schedule => {
                 if (schedule.medication_schedule_times.length === 0) {
-                    flat.push({
+                    results.push({
                         scheduleId: schedule.id,
                         // give a unique negative key so it doesn’t collide with real times:
                         scheduleTimeId: -schedule.id,
                         medication: schedule.medication,
                         dosage: schedule.dosage,
                         time: "",          // empty → falsy, so the card shows “No times set”
-                        isTaken: false,    // always untaken by default
+                        status: "none",    // always untaken by default
+                        snoozedUntil: null,
                         remainingQuantity: schedule.remaining_quantity,
                     });
                 }
@@ -161,15 +167,16 @@ export default function Home() {
 
             // flat.sort((a, b) => a.time.localeCompare(b.time)); -> if there are no times set, this will throw an error
             // (if the As needed case is treated)
-            flat.sort((a, b) => {
+            results.sort((a, b) => {
                 if (!a.time && !b.time) return 0;   // both no‐time
                 if (!a.time) return 1;  // push a after b
                 if (!b.time) return -1;  // push b after a
                 return a.time.localeCompare(b.time);
             });
-            setTodaysSchedules(flat);
-            setTotalDoses(flat.length);
-            setDosesTaken(flat.filter(item => item.isTaken).length);
+            // 7) Set the state with the results and calculate the total doses and taken doses
+            setTodaysSchedules(results);
+            setTotalDoses(results.length);
+            setDosesTaken(results.filter(item => item.status === "taken").length);
         } catch (err) {
             console.error("Unexpected error:", err);
         }
@@ -213,6 +220,8 @@ export default function Home() {
                     <Ionicons name="person-circle-outline" size={28} color="#fff" />
                 </TouchableOpacity>
             </View>
+
+            {/* Daily Progress */}
             <View style={styles.progressContainer}>
                 <Text style={styles.progressTitle}>Daily Progress</Text>
                 <View style={styles.circleContainer}>
@@ -233,6 +242,8 @@ export default function Home() {
                     </Text>
                 </View>
             </View>
+
+            {/* Quick Actions */}
             <View style={styles.quickActionsTitleContainer}>
                 <Text style={styles.quickActionsTitle}>Quick Actions</Text>
             </View>
@@ -274,6 +285,8 @@ export default function Home() {
                     </View>
                 </TouchableOpacity>
             </View>
+
+            {/* Today's Schedule Heading */}
             <View style={styles.scheduleHeaderContainer}>
                 <View style={styles.scheduleHeader}>
                     <View style={styles.scheduleHeaderLeft}>
@@ -363,6 +376,7 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 2,
     },
+    /* Daily Progress */
     progressContainer: {
         backgroundColor: COLORS.secondary,
         paddingVertical: 20,
