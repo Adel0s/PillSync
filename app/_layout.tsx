@@ -1,9 +1,17 @@
 import { Stack } from "expo-router";
 import { AuthProvider } from "../context/AuthProvider";
+import { useNotifications } from "../hooks/useNotifications";
+
+// acest component simplu pornește useNotifications() o singură dată
+function NotificationLoader() {
+  useNotifications();
+  return null;
+}
 
 export default function Layout() {
   return (
     <AuthProvider>
+      <NotificationLoader />
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="login" />
