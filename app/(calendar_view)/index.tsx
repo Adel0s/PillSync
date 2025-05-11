@@ -9,11 +9,13 @@ import {
     Dimensions,
     Modal,
     FlatList,
+    ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../lib/supabase";
 import {
     fetchCalendarData,
+    fetchYearlyCalendarData,
     DayStats,
     PillLog,
 } from "../../services/calendarService";
@@ -28,41 +30,85 @@ const CELL_SIZE = (SCREEN_WIDTH - CELL_MARGIN * 2 * 7 - 32) / 7;
 export default function CalendarView() {
     const [userId, setUserId] = useState<string | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
+
+    // lunar
     const [statsByDay, setStatsByDay] = useState<Record<string, DayStats>>({});
     const [logsByDay, setLogsByDay] = useState<Record<string, PillLog[]>>({});
     const [timesById, setTimesById] = useState<Record<number, string>>({});
     const [timeToSchedule, setTimeToSchedule] = useState<Record<number, number>>({});
     const [scheduleNamesById, setScheduleNamesById] = useState<Record<number, string>>({});
-    const [loading, setLoading] = useState(false);
+    const [currentAdherence, setCurrentAdherence] = useState(0);
+    const [prevAdherence, setPrevAdherence] = useState(0);
 
+    // anual
+    const [yearlyStats, setYearlyStats] = useState<Record<string, DayStats>>({});
+
+    const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-    // 1) Preluăm user
+    // pentru comparație cu azi
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
+        today.getDate()
+    ).padStart(2, "0")}`;
+
+    // 1) Încarcă user
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
             if (data.user) setUserId(data.user.id);
         });
     }, []);
 
-    // 2) Fetch când schimbă luna sau user
+    // 2) Fetch date la schimbare user/lună/viewMode
     useEffect(() => {
         if (!userId) return;
-        const year = currentMonth.getFullYear();
-        const month = currentMonth.getMonth() + 1;
         setLoading(true);
 
-        fetchCalendarData(userId, year, month)
-            .then(({ statsByDay, logsByDay, timesById, timeToSchedule, scheduleNamesById }) => {
-                setStatsByDay(statsByDay);
-                setLogsByDay(logsByDay);
-                setTimesById(timesById);
-                setTimeToSchedule(timeToSchedule);
-                setScheduleNamesById(scheduleNamesById);
-            })
-            .catch(console.error)
-            .finally(() => setLoading(false));
-    }, [userId, currentMonth]);
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth() + 1;
+
+        const load = async () => {
+            if (viewMode === "monthly") {
+                const {
+                    statsByDay: sByDay,
+                    logsByDay: lByDay,
+                    timesById: tById,
+                    timeToSchedule: t2s,
+                    scheduleNamesById: namesById,
+                } = await fetchCalendarData(userId, year, month);
+                setStatsByDay(sByDay);
+                setLogsByDay(lByDay);
+                setTimesById(tById);
+                setTimeToSchedule(t2s);
+                setScheduleNamesById(namesById);
+
+                const ratios = Object.values(sByDay).map(s => s.taken / (s.totalPlanned || 1));
+                const avgCur = ratios.length
+                    ? ratios.reduce((a, b) => a + b, 0) / ratios.length
+                    : 0;
+                setCurrentAdherence(Math.round(avgCur * 100));
+
+                const prevDate = new Date(year, currentMonth.getMonth() - 1, 1);
+                const py = prevDate.getFullYear();
+                const pm = prevDate.getMonth() + 1;
+                const { statsByDay: prevStats } = await fetchCalendarData(userId, py, pm);
+                const prevRatios = Object.values(prevStats).map(s => s.taken / (s.totalPlanned || 1));
+                const avgPrev = prevRatios.length
+                    ? prevRatios.reduce((a, b) => a + b, 0) / prevRatios.length
+                    : 0;
+                setPrevAdherence(Math.round(avgPrev * 100));
+            } else {
+                const startISO = new Date(year - 1, currentMonth.getMonth(), 1, 0, 0, 0).toISOString();
+                const endISO = new Date(year, currentMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
+                const stats = await fetchYearlyCalendarData(userId, startISO, endISO);
+                setYearlyStats(stats);
+            }
+        };
+
+        load().catch(console.error).finally(() => setLoading(false));
+    }, [userId, currentMonth, viewMode]);
 
     // Grid helper
     const firstWeekday = new Date(
@@ -89,30 +135,35 @@ export default function CalendarView() {
     const nextMonth = () =>
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
 
-    // Procent mediu aderare
-    const dayKeys = Object.keys(statsByDay);
-    const avgRatio = dayKeys.length
-        ? dayKeys
-            .map(d => statsByDay[d].taken / statsByDay[d].totalPlanned)
-            .reduce((a, b) => a + b, 0) / dayKeys.length
-        : 0;
-    const adherencePercent = Math.round(avgRatio * 100);
-
-    // Render log în modal
+    // render log
     const renderLog = ({ item }: { item: PillLog }) => {
         const schedId = timeToSchedule[item.schedule_time_id];
         const medName = scheduleNamesById[schedId] || "–";
-        const scheduledTime = timesById[item.schedule_time_id] || "--:--";
-        const actualTime = item.taken_at.substr(11, 5);
+        // 1. Ia raw string-ul, ex: "21:00:00"
+        const rawScheduled = timesById[item.schedule_time_id] || "--:--";
 
+        // 2. Taie secundele: rămâi cu "21:00"
+        const scheduledTime = rawScheduled.slice(0, 5);
+
+        const isoString = item.taken_at
+            // înlocuiește primul spațiu cu 'T' pentru format ISO
+            .replace(" ", "T")
+            // adaugă ":00" la offset-ul de două cifre, ca să devină "+00:00"
+            .replace(/([+-]\d{2})$/, "$1:00");
+
+        // 2. Parser și conversie în timezone-ul local
+        const actualDate = new Date(isoString);
+
+        // 3. Formatăm doar ora și minutul, cu zero-padding
+        const actualTime = actualDate.toLocaleTimeString(undefined, {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+        });
         const iconColor =
-            item.status === "taken" ? "#20A0D8"
-                : item.status === "skipped" ? "#FF3B30"
-                    : "#FF9500";
+            item.status === "taken" ? "#4CAF50" : item.status === "skipped" ? "#FF3B30" : "#FF9500";
         const icon =
-            item.status === "taken" ? "checkmark-circle"
-                : item.status === "skipped" ? "close-circle"
-                    : "help-circle";
+            item.status === "taken" ? "checkmark-circle" : item.status === "skipped" ? "close-circle" : "help-circle";
 
         return (
             <View style={styles.logRow}>
@@ -125,115 +176,198 @@ export default function CalendarView() {
         );
     };
 
+    // annual heatmap
+    const YearlyHeatmap = () => {
+        const start = new Date(currentMonth.getFullYear() - 1, currentMonth.getMonth(), 1);
+        const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+        const days: { date: Date; ratio: number }[] = [];
+        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const key = d.toISOString().substr(0, 10);
+            const s = yearlyStats[key];
+            const ratio = s ? s.taken / (s.totalPlanned || 1) : 0;
+            days.push({ date: new Date(d), ratio });
+        }
+        const months = Array.from(new Set(days.map(d => d.date.getMonth())));
+        return (
+            <ScrollView horizontal style={styles.heatmapContainer}>
+                {months.map(m => {
+                    const monthCells = days.filter(d => d.date.getMonth() === m);
+                    return (
+                        <View key={m} style={styles.monthColumn}>
+                            <Text style={styles.monthLabel}>
+                                {new Date(0, m).toLocaleString("default", { month: "short" })}
+                            </Text>
+                            {monthCells.map((c, i) => (
+                                <View
+                                    key={i}
+                                    style={[
+                                        styles.heatCell,
+                                        {
+                                            backgroundColor:
+                                                c.ratio >= 1 ? "#20A0D8" : c.ratio >= 0.5 ? "#FF9500" : "#FF3B30",
+                                        },
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                    );
+                })}
+            </ScrollView>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Calendar View" backRoute="/home" />
 
             <View style={styles.container}>
-                {/* Month navigator */}
-                <View style={styles.nav}>
-                    <TouchableOpacity onPress={prevMonth}>
-                        <Ionicons name="chevron-back" size={28} color="#fff" />
+                {/* Toggle între Monthly / Yearly */}
+                <View style={styles.toggleContainer}>
+                    <TouchableOpacity
+                        onPress={() => setViewMode("monthly")}
+                        style={[styles.toggleBtn, viewMode === "monthly" && styles.toggleBtnActive]}
+                    >
+                        <Text style={[styles.toggleTxt, viewMode === "monthly" && styles.toggleTxtActive]}>Lunar</Text>
                     </TouchableOpacity>
-                    <Text style={styles.navTitle}>
-                        {currentMonth.toLocaleString("default", { month: "long", year: "numeric" })}
-                    </Text>
-                    <TouchableOpacity onPress={nextMonth}>
-                        <Ionicons name="chevron-forward" size={28} color="#fff" />
+                    <TouchableOpacity
+                        onPress={() => setViewMode("yearly")}
+                        style={[styles.toggleBtn, viewMode === "yearly" && styles.toggleBtnActive]}
+                    >
+                        <Text style={[styles.toggleTxt, viewMode === "yearly" && styles.toggleTxtActive]}>Anual</Text>
                     </TouchableOpacity>
                 </View>
 
-                {/* Weekdays */}
-                <View style={styles.weekRow}>
-                    {WEEK_DAYS.map(wd => (
-                        <Text key={wd} style={styles.weekDay}>{wd}</Text>
-                    ))}
-                </View>
-
-                {/* Grid */}
-                {loading ? (
-                    <ActivityIndicator size="large" color="#20A0D8" style={{ marginTop: 40 }} />
-                ) : (
-                    <View style={styles.grid}>
-                        {cells.map((c, i) => {
-                            let bg = "#eee";
-                            if (c.label && c.dateStr && statsByDay[c.dateStr]) {
-                                const { taken, totalPlanned } = statsByDay[c.dateStr];
-                                const pct = taken / totalPlanned;
-                                bg = pct === 1 ? "#20A0D8" : pct >= 0.5 ? "#FF9500" : "#FF3B30";
-                            }
-                            return (
-                                <TouchableOpacity
-                                    key={i}
-                                    style={[styles.cell, { backgroundColor: bg }]}
-                                    activeOpacity={c.label && c.dateStr ? 0.6 : 1}
-                                    onPress={() => {
-                                        if (c.dateStr && logsByDay[c.dateStr]) {
-                                            setSelectedDay(c.dateStr);
-                                            setModalVisible(true);
-                                        }
-                                    }}
-                                >
-                                    {c.label && <Text style={styles.cellText}>{c.label}</Text>}
-                                </TouchableOpacity>
-                            );
-                        })}
+                {/* Month navigator - afișează doar în view lunar */}
+                {viewMode === "monthly" && (
+                    <View style={styles.nav}>
+                        <TouchableOpacity onPress={prevMonth}>
+                            <Ionicons name="chevron-back" size={28} color="#fff" />
+                        </TouchableOpacity>
+                        <Text style={styles.navTitle}>
+                            {currentMonth.toLocaleString("default", { month: "long", year: "numeric" })}
+                        </Text>
+                        <TouchableOpacity onPress={nextMonth}>
+                            <Ionicons name="chevron-forward" size={28} color="#fff" />
+                        </TouchableOpacity>
                     </View>
                 )}
 
-                {/* Legendă & statistici */}
-                <View style={styles.summaryContainer}>
-                    <Text style={styles.adherenceText}>Procent aderare: {adherencePercent}%</Text>
-                    <View style={styles.legendContainer}>
-                        {[
-                            { col: "#20A0D8", txt: "100% luate" },
-                            { col: "#FF9500", txt: "50–99%" },
-                            { col: "#FF3B30", txt: "<50%" },
-                        ].map(({ col, txt }) => (
-                            <View key={txt} style={styles.legendItem}>
-                                <View style={[styles.legendColor, { backgroundColor: col }]} />
-                                <Text style={styles.legendText}>{txt}</Text>
+                {viewMode === "monthly" ? (
+                    loading ? (
+                        <ActivityIndicator size="large" color="#20A0D8" style={{ marginTop: 40 }} />
+                    ) : (
+                        <>
+                            {/* Weekdays */}
+                            <View style={styles.weekRow}>
+                                {WEEK_DAYS.map(wd => (
+                                    <Text key={wd} style={styles.weekDay}>{wd}</Text>
+                                ))}
                             </View>
-                        ))}
-                    </View>
-                    <TouchableOpacity
-                        style={styles.reportButton}
-                        onPress={() => exportCalendarReport({
-                            monthTitle: currentMonth.toLocaleString("default", { month: "long", year: "numeric" }),
-                            statsByDay
-                        })}
-                    >
-                        <Text style={styles.reportButtonText}>Vezi rapoarte detaliate</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* Modal cu detalii */}
-                <Modal
-                    visible={modalVisible}
-                    animationType="slide"
-                    transparent
-                    onRequestClose={() => setModalVisible(false)}
-                >
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>{selectedDay}</Text>
-                            <FlatList
-                                data={selectedDay ? logsByDay[selectedDay] : []}
-                                keyExtractor={item => item.id.toString()}
-                                renderItem={renderLog}
-                                ListEmptyComponent={
-                                    <Text style={{ textAlign: "center", marginTop: 20 }}>Nicio înregistrare</Text>
-                                }
-                            />
-                            <TouchableOpacity
-                                style={styles.closeButton}
-                                onPress={() => setModalVisible(false)}
+                            {/* Grid lunar */}
+                            <View style={styles.grid}>
+                                {cells.map((c, i) => {
+                                    let bg = "#eee";
+                                    if (c.label && c.dateStr && c.dateStr <= todayStr) {
+                                        const stats = statsByDay[c.dateStr];
+                                        if (stats?.totalPlanned > 0) {
+                                            const pct = stats.taken / stats.totalPlanned;
+                                            bg = pct >= 1 ? "#4CAF50" : pct >= 0.5 ? "#FF9500" : "#FF3B30";
+                                        }
+                                    }
+                                    return (
+                                        <TouchableOpacity
+                                            key={i}
+                                            style={[styles.cell, { backgroundColor: bg }]}
+                                            activeOpacity={c.label ? 0.6 : 1}
+                                            onPress={() => {
+                                                if (c.dateStr && logsByDay[c.dateStr]) {
+                                                    setSelectedDay(c.dateStr);
+                                                    setModalVisible(true);
+                                                }
+                                            }}
+                                        >
+                                            {c.label && <Text style={styles.cellText}>{c.label}</Text>}
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                            {/* Trend, legend & raport */}
+                            <View style={styles.summaryContainer}>
+                                <View style={styles.trendRow}>
+                                    <Text
+                                        style={[
+                                            styles.trendText,
+                                            currentAdherence - prevAdherence >= 0 ? styles.up : styles.down,
+                                        ]}
+                                    >
+                                        {currentAdherence - prevAdherence >= 0 ? "↑" : "↓"}{" "}
+                                        {Math.abs(currentAdherence - prevAdherence)}% față de luna trecută
+                                    </Text>
+                                </View>
+                                <Text style={styles.adherenceText}>Procent aderare: {currentAdherence}%</Text>
+                                <View style={styles.legendContainer}>
+                                    {[
+                                        { col: "#4CAF50", txt: "100% luate" },
+                                        { col: "#FF9500", txt: "50–99%" },
+                                        { col: "#FF3B30", txt: "<50%" },
+                                    ].map(({ col, txt }) => (
+                                        <View key={txt} style={styles.legendItem}>
+                                            <View style={[styles.legendColor, { backgroundColor: col }]} />
+                                            <Text style={styles.legendText}>{txt}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                                <TouchableOpacity
+                                    style={styles.reportButton}
+                                    onPress={() =>
+                                        exportCalendarReport({
+                                            monthTitle: currentMonth.toLocaleString("default", {
+                                                month: "long",
+                                                year: "numeric",
+                                            }),
+                                            statsByDay,
+                                        })
+                                    }
+                                >
+                                    <Text style={styles.reportButtonText}>Vezi rapoarte detaliate</Text>
+                                </TouchableOpacity>
+                            </View>
+                            {/* Modal detalii */}
+                            <Modal
+                                visible={modalVisible}
+                                animationType="slide"
+                                transparent
+                                onRequestClose={() => setModalVisible(false)}
                             >
-                                <Text style={styles.closeText}>Închide</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
+                                <View style={styles.modalOverlay}>
+                                    <View style={styles.modalContent}>
+                                        <Text style={styles.modalTitle}>{selectedDay}</Text>
+                                        <FlatList
+                                            data={selectedDay ? logsByDay[selectedDay] : []}
+                                            keyExtractor={item => item.id.toString()}
+                                            renderItem={renderLog}
+                                            ListEmptyComponent={
+                                                <Text style={{ textAlign: "center", marginTop: 20 }}>Nicio înregistrare</Text>
+                                            }
+                                        />
+                                        <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+                                            <Text style={styles.closeText}>Închide</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </Modal>
+                        </>
+                    )
+                ) : (
+                    loading ? (
+                        <ActivityIndicator size="large" color="#20A0D8" style={{ marginTop: 40 }} />
+                    ) : (
+                        <>
+                            <Text style={styles.sectionTitle}>Heatmap Anual</Text>
+                            <YearlyHeatmap />
+                        </>
+                    )
+                )}
             </View>
         </SafeAreaView>
     );
@@ -242,22 +376,43 @@ export default function CalendarView() {
 const styles = StyleSheet.create({
     safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
     container: { flex: 1, padding: 16, backgroundColor: "#f9f9f9" },
+
+    toggleContainer: { flexDirection: "row", justifyContent: "center", marginVertical: 8 },
+    toggleBtn: { paddingVertical: 6, paddingHorizontal: 16, borderRadius: 4, backgroundColor: "#eee", marginHorizontal: 4 },
+    toggleBtnActive: { backgroundColor: "#20A0D8" },
+    toggleTxt: { color: "#333", fontSize: 14 },
+    toggleTxtActive: { color: "#fff", fontWeight: "bold" },
+
     nav: { flexDirection: "row", backgroundColor: "#20A0D8", alignItems: "center", justifyContent: "space-between", padding: 12, borderRadius: 8 },
     navTitle: { color: "#fff", fontSize: 18, fontWeight: "bold" },
+
     weekRow: { flexDirection: "row", marginTop: 16 },
     weekDay: { flex: 1, textAlign: "center", fontWeight: "600", color: "#333" },
+
     grid: { flexDirection: "row", flexWrap: "wrap", marginTop: 8 },
     cell: { width: CELL_SIZE, height: CELL_SIZE, margin: CELL_MARGIN, borderRadius: 4, alignItems: "center", justifyContent: "center" },
     cellText: { color: "#fff", fontWeight: "600" },
 
     summaryContainer: { marginTop: 24, alignItems: "center" },
+    trendRow: { alignItems: "center", marginBottom: 8 },
+    trendText: { fontSize: 14, fontWeight: "600" },
+    up: { color: "#20A0D8" },
+    down: { color: "#FF3B30" },
+
     adherenceText: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
     legendContainer: { flexDirection: "row", marginBottom: 12 },
     legendItem: { flexDirection: "row", alignItems: "center", marginHorizontal: 8 },
     legendColor: { width: 16, height: 16, borderRadius: 4, marginRight: 4 },
     legendText: { fontSize: 14, color: "#333" },
+
     reportButton: { backgroundColor: "#20A0D8", paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
     reportButtonText: { color: "#fff", fontWeight: "600" },
+
+    sectionTitle: { fontSize: 16, fontWeight: "600", marginVertical: 8, textAlign: "center" },
+    heatmapContainer: { flexDirection: "row", marginTop: 8 },
+    monthColumn: { alignItems: "center", marginHorizontal: 4 },
+    monthLabel: { fontSize: 12, marginBottom: 4 },
+    heatCell: { width: CELL_SIZE - 4, height: CELL_SIZE - 4, margin: 2, borderRadius: 4 },
 
     modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
     modalContent: { backgroundColor: "#fff", borderTopLeftRadius: 16, borderTopRightRadius: 16, maxHeight: "60%", padding: 16 },
