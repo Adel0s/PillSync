@@ -99,6 +99,28 @@ export default function Home() {
                 end.setDate(end.getDate() + schedule.duration_days);
                 return today >= start && today <= end;
             });
+            // 3) Găsește toate pill_logs cu status = 'snoozed' care au note ≤ acum  
+            const nowIso = new Date().toISOString();
+            const { data: snoozedLogs, error: fetchErr } = await supabase
+                .from("pill_logs")
+                .select("id")
+                .eq("status", "snoozed")
+                .lte("note", nowIso);
+            if (fetchErr) throw fetchErr;
+
+            if (snoozedLogs?.length) {
+                // Pregătește array-ul de obiecte cu același id, dar status/note resetate
+                const toReset = snoozedLogs.map(l => ({
+                    id: l.id,
+                    status: null,
+                    note: null,
+                }));
+                // Upsert pe id → UPDATE pentru cele existente
+                const { error: upErr } = await supabase
+                    .from("pill_logs")
+                    .upsert(toReset, { onConflict: "id" });
+                if (upErr) console.error("Error resetting snoozes:", upErr);
+            }
             // For each schedule, check pill_logs and add an isTaken flag
             const startOfDay = new Date(
                 today.getFullYear(),
@@ -194,7 +216,7 @@ export default function Home() {
         router.push("/(calendar_view)")
     };
     const handleHistoryLog = () => {
-        // router.push("/history")
+        router.push("/(pill_interactions)");
     };
     const handleRefillTracker = () => {
         router.push("/refill_tracker");

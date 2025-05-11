@@ -8,6 +8,8 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import MedicationDetailsModal from "./MedicationDetailsModal";
+import { cancelLocalNotification, scheduleLocalNotificationInSeconds } from "../services/notificationService";
+import * as Notifications from "expo-notifications";
 
 interface ScheduleItemProps {
     item: {
@@ -50,6 +52,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
         initialSnooze
     );
     const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [notificationId, setNotificationId] = useState<string | null>(null);
 
     // 1) figure out if "now" is past this pill's time—recomputed every render
     const [H, M] = time?.split(":").map(Number) ?? [0, 0];
@@ -74,6 +77,11 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
     const handleTake = async () => {
         console.log("Taked pill: ", item);
         if (status !== "none") return;
+        if (notificationId) {
+            await cancelLocalNotification(notificationId);
+            console.log("Cancelled notification:", notificationId);
+            setNotificationId(null);
+        }
         try {
             const payload: Record<string, any> = {
                 schedule_id: scheduleId,
@@ -115,6 +123,11 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
 
     const handleSkip = async () => {
         if (status !== "none") return;
+        if (notificationId) {
+            await cancelLocalNotification(notificationId);
+            console.log("Cancelled notification:", notificationId);
+            setNotificationId(null);
+        }
         try {
             await supabase.from("pill_logs").insert([
                 {
@@ -132,6 +145,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
     const handleSnooze = async (minutes: number) => {
         if (status !== "none") return;
         const until = new Date(Date.now() + minutes * 60000).toISOString();
+        const snoozeTimeInSeconds = minutes * 60;
         try {
             await supabase.from("pill_logs").insert([
                 {
@@ -146,13 +160,28 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
         } catch (e) {
             console.error("Snooze error:", e);
         }
+        const atDate = new Date(until);
+        console.log("Snooze until:", atDate.toISOString());
+        console.log("Snooze seconds:", snoozeTimeInSeconds);
+        const id = await scheduleLocalNotificationInSeconds(
+            `⌛ Time to take ${medication.name}`,
+            "Snooze expired — please take your pill now.",
+            {},
+            snoozeTimeInSeconds
+        );
+        Notifications.addNotificationReceivedListener(() => {
+            Notifications.cancelScheduledNotificationAsync(id);
+        });
+        setNotificationId(id);
+        const all = await Notifications.getAllScheduledNotificationsAsync();
+        console.log("🔔 All scheduled notifications:", JSON.stringify(all, null, 2));
+        console.log("Scheduled snooze notification id:", id);
     };
 
     const openSnoozeOptions = () => {
         Alert.alert("Snooze for…", "Choose duration:", [
-            { text: "5 min", onPress: () => handleSnooze(5) },
+            { text: "1 min", onPress: () => handleSnooze(1) },
             { text: "10 min", onPress: () => handleSnooze(10) },
-            { text: "15 min", onPress: () => handleSnooze(15) },
             { text: "Cancel", style: "cancel" },
         ]);
     };

@@ -66,7 +66,7 @@ export async function scheduleLocalNotificationInSeconds(
 ): Promise<string> {
     const id = await Notifications.scheduleNotificationAsync({
         content: { title, body, data },
-        trigger: { type: SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: secondsFromNow, repeats: false },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: secondsFromNow, repeats: false },
     });
     return id;
 }
