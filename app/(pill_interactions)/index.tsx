@@ -8,13 +8,18 @@ import {
     ActivityIndicator,
     StyleSheet,
     TouchableOpacity,
+    TextInput,
+    ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthProvider";
 import { supabase } from "../../lib/supabase";
-import { getDrugDrugInteraction } from "../../services/interactionService";
+import {
+    getDrugDrugInteraction,
+    getDrugFoodInteraction,
+} from "../../services/interactionService";
 
-// 1) Tipuri pentru Schedule și Medication (preluate din index.tsx)
+// 1) Types for Schedule and Medication
 interface Medication {
     id: number;
     name: string | null;
@@ -30,7 +35,7 @@ interface MedicationSchedule {
     medication?: Medication;
 }
 
-// 2) Helperul de filtrare a perioadei active
+// 2) Helper method for getting active medications
 const isWithinTreatmentPeriod = (
     start_date: string,
     duration_days: number
@@ -41,48 +46,59 @@ const isWithinTreatmentPeriod = (
     return new Date() <= end;
 };
 
-// 3) Tip pentru interacțiune
+// 3) Type for interactions
 type Interaction = { severity: string; summary: string; details: string };
 
 export default function PillInteractions() {
     const { user } = useAuth();
     const router = useRouter();
 
+    // drug–drug states
     const [pairs, setPairs] = useState<Array<[Medication, Medication]>>([]);
-    const [results, setResults] = useState<Record<string, Interaction[]>>({});
-    const [loading, setLoading] = useState(false);
+    const [ddResults, setDdResults] = useState<Record<string, Interaction[]>>({});
+    const [ddLoading, setDdLoading] = useState(false);
 
-    // 4) Încarcă azi medicamentele active și generează perechi
+    // păstrăm și lista unică de medicamente
+    const [meds, setMeds] = useState<Medication[]>([]);
+
+    // drug–food states
+    const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
+    const [foodInput, setFoodInput] = useState("");
+    const [dfResults, setDfResults] = useState<Interaction[] | null>(null);
+    const [dfLoading, setDfLoading] = useState(false);
+
+    // 4) Fetch today's medications
     const fetchTodaysMeds = useCallback(async () => {
         if (!user) return;
-        setLoading(true);
+        // loading doar pentru DD aici
+        setDdLoading(true);
         try {
-            // 4.1) Preia toate schedule-urile active și join pe medication
             const { data, error } = await supabase
                 .from("medication_schedule")
                 .select("*, medication(id, name, active_substance)")
                 .eq("patient_id", user.id)
                 .in("status", ["active", "paused"]);
+
             if (error) {
                 console.error("Error fetching schedules:", error);
                 return;
             }
 
-            // 4.2) Filtrează doar cele în perioada curentă
+            // get only active medications
             const schedules = (data as MedicationSchedule[]).filter((s) =>
                 isWithinTreatmentPeriod(s.start_date, s.duration_days)
             );
 
-            // 4.3) Extrage Med-urile, dedupe după id
-            const medsList = schedules
-                .map((s) => s.medication)
-                .filter((m): m is Medication => !!m);
-            const uniqMeds = Array.from(
-                new Map(medsList.map((m) => [m.id, m])).values()
-            );
+            // get unique medications
+            const uniqMap = new Map<number, Medication>();
+            schedules.forEach((s) => {
+                if (s.medication?.id) uniqMap.set(s.medication.id, s.medication);
+            });
+            const uniqMeds = Array.from(uniqMap.values());
+            setMeds(uniqMeds);
             console.log("Unique medications:", uniqMeds);
 
-            // 4.4) Generează toate perechile unice A–B
+            // generate pairs for Drug-Drug checker
             const ps: Array<[Medication, Medication]> = [];
             for (let i = 0; i < uniqMeds.length; i++) {
                 for (let j = i + 1; j < uniqMeds.length; j++) {
@@ -94,7 +110,7 @@ export default function PillInteractions() {
         } catch (err) {
             console.error("Unexpected error in fetchTodaysMeds:", err);
         } finally {
-            setLoading(false);
+            setDdLoading(false);
         }
     }, [user]);
 
@@ -102,24 +118,42 @@ export default function PillInteractions() {
         fetchTodaysMeds();
     }, [fetchTodaysMeds]);
 
-    // 5) La click, fetch interacțiuni pentru fiecare pereche
-    const fetchInteractions = useCallback(async () => {
+    // 5) drug–drug checker
+    const check_drug_drug_interaction = useCallback(async () => {
         if (pairs.length === 0) return;
-        setLoading(true);
+        setDdLoading(true);
         try {
-            const temp: Record<string, Interaction[]> = {};
+            const out: Record<string, Interaction[]> = {};
             for (const [a, b] of pairs) {
                 const key = `${a.id}-${b.id}`;
-                temp[key] = await getDrugDrugInteraction(a.id, b.id).catch((_) => []);
+                out[key] = await getDrugDrugInteraction(a.id, b.id).catch(() => []);
             }
-            setResults(temp);
-            console.log("Fetched interactions:", temp);
+            setDdResults(out);
+            console.log("Fetched DD interactions:", out);
         } catch (err) {
-            console.error("Unexpected error in fetchInteractions:", err);
+            console.error("Unexpected error in checking DD interaction:", err);
         } finally {
-            setLoading(false);
+            setDdLoading(false);
         }
     }, [pairs]);
+
+    // 6) drug–food checker
+    const check_drug_food_interaction = useCallback(async () => {
+        if (!selectedMed || !foodInput.trim()) return;
+        setDfLoading(true);
+        try {
+            const res = await getDrugFoodInteraction(
+                selectedMed.id,
+                foodInput.trim()
+            );
+            setDfResults(res);
+            console.log("Fetched DF interactions:", res);
+        } catch (err) {
+            console.error("Unexpected error in checking DF interaction:", err);
+        } finally {
+            setDfLoading(false);
+        }
+    }, [selectedMed, foodInput]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -131,22 +165,21 @@ export default function PillInteractions() {
                 </TouchableOpacity>
             </View>
 
-            {/* Button to trigger checking */}
-            <TouchableOpacity style={styles.btn} onPress={fetchInteractions}>
-                <Text style={styles.btnText}>Verifică interacțiuni</Text>
+            {/* --- DD Section --- */}
+            <Text style={styles.sectionTitle}>
+                Drug ↔️ Drug Interactions
+            </Text>
+            <TouchableOpacity style={styles.btn} onPress={check_drug_drug_interaction}>
+                <Text style={styles.btnText}>Check Drug-Drug interactions</Text>
             </TouchableOpacity>
-
-            {/* Loading indicator */}
-            {loading && <ActivityIndicator size="large" style={{ marginTop: 20 }} />}
-
-            {/* Results list */}
-            {!loading && Object.keys(results).length > 0 && (
+            {ddLoading && <ActivityIndicator style={{ marginVertical: 12 }} />}
+            {!ddLoading && Object.keys(ddResults).length > 0 && (
                 <FlatList
                     data={pairs}
                     keyExtractor={([a, b]) => `${a.id}-${b.id}`}
                     renderItem={({ item: [a, b] }) => {
                         const key = `${a.id}-${b.id}`;
-                        const inters = results[key] ?? [];
+                        const inters = ddResults[key] || [];
                         return (
                             <View style={styles.card}>
                                 <Text style={styles.pairTitle}>
@@ -160,13 +193,74 @@ export default function PillInteractions() {
                                     ))
                                 ) : (
                                     <Text style={styles.interText}>
-                                        Nici o interacțiune găsită
+                                        No interactions found.
                                     </Text>
                                 )}
                             </View>
                         );
                     }}
                 />
+            )}
+
+            {/* --- DF Section --- */}
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>
+                Drug ↔️ Food Interactions
+            </Text>
+            <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={{ marginVertical: 8 }}
+            >
+                {meds.map((m) => (
+                    <TouchableOpacity
+                        key={m.id}
+                        style={[
+                            styles.medButton,
+                            selectedMed?.id === m.id && styles.medButtonSelected,
+                        ]}
+                        onPress={() => {
+                            setSelectedMed(m);
+                            setDfResults(null);
+                        }}
+                    >
+                        <Text
+                            style={[
+                                styles.medButtonText,
+                                selectedMed?.id === m.id && styles.medButtonTextSelected,
+                            ]}
+                        >
+                            {m.name}
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </ScrollView>
+            <TextInput
+                style={styles.input}
+                placeholder="Ex: grapefruit, alcool..."
+                value={foodInput}
+                onChangeText={setFoodInput}
+            />
+            <TouchableOpacity style={styles.btn} onPress={check_drug_food_interaction}>
+                <Text style={styles.btnText}>Check Drug-Food interactions</Text>
+            </TouchableOpacity>
+            {dfLoading && <ActivityIndicator style={{ marginVertical: 12 }} />}
+            {!dfLoading && dfResults !== null && selectedMed && (
+                <View style={styles.card}>
+                    <Text style={styles.pairTitle}>
+                        {selectedMed.name} ↔️ {foodInput.trim()}
+                    </Text>
+                    {dfResults.length > 0 ? (
+                        dfResults.map((i, idx) => (
+                            <Text key={idx} style={styles.interText}>
+                                • [{i.severity}] {i.details}
+                            </Text>
+                        ))
+                    ) : (
+                        <Text style={styles.interText}>
+                            No interactions found.
+                        </Text>
+                    )}
+                </View>
             )}
         </SafeAreaView>
     );
@@ -181,16 +275,20 @@ const styles = StyleSheet.create({
     },
     title: { fontSize: 20, fontWeight: "bold" },
     close: { fontSize: 24, padding: 4 },
+
+    sectionTitle: { fontSize: 18, fontWeight: "600", marginTop: 16 },
+
     btn: {
-        marginTop: 16,
+        marginTop: 8,
         padding: 12,
         backgroundColor: "#0077b6",
         borderRadius: 8,
         alignItems: "center",
     },
     btnText: { color: "#fff", fontWeight: "600" },
+
     card: {
-        marginTop: 16,
+        marginTop: 12,
         padding: 12,
         borderWidth: 1,
         borderRadius: 8,
@@ -198,4 +296,33 @@ const styles = StyleSheet.create({
     },
     pairTitle: { fontWeight: "600", marginBottom: 8 },
     interText: { marginLeft: 8, marginBottom: 4 },
+
+    // drug–food picker buttons
+    medButton: {
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderWidth: 1,
+        borderColor: "#0077b6",
+        borderRadius: 20,
+        marginRight: 8,
+    },
+    medButtonSelected: {
+        backgroundColor: "#0077b6",
+    },
+    medButtonText: {
+        color: "#0077b6",
+    },
+    medButtonTextSelected: {
+        color: "#fff",
+        fontWeight: "600",
+    },
+
+    input: {
+        marginTop: 8,
+        marginBottom: 4,
+        borderWidth: 1,
+        borderColor: "#ccc",
+        borderRadius: 6,
+        padding: 10,
+    },
 });
