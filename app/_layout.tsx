@@ -25,7 +25,10 @@ export default function Layout() {
         <Stack.Screen name="refill_tracker/[id]/inventory" />
         <Stack.Screen name="refill_tracker/[id]/schedule_pill_list" />
         <Stack.Screen name="(calendar_view)/index" />
-        <Stack.Screen name="(pill_interactions)/index" />
+        <Stack.Screen
+          name="pill_interactions"
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="reset_password" />
       </Stack>
     </AuthProvider>
