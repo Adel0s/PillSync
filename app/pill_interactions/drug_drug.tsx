@@ -66,14 +66,12 @@ export default function DrugDrugScreen() {
                 return;
             }
 
-            const schedules = (data as MedicationSchedule[]).filter((s) =>
+            const active = (data as MedicationSchedule[]).filter((s) =>
                 isWithinTreatmentPeriod(s.start_date, s.duration_days)
             );
-            const uniqMap = new Map<number, Medication>();
-            schedules.forEach((s) => {
-                if (s.medication?.id) uniqMap.set(s.medication.id, s.medication);
-            });
-            const uniqMeds = Array.from(uniqMap.values());
+            const uniqMeds = Array.from(
+                new Map(active.map((s) => [s.medication!.id, s.medication!])).values()
+            );
             setMeds(uniqMeds);
 
             const ps: [Medication, Medication][] = [];
@@ -115,33 +113,57 @@ export default function DrugDrugScreen() {
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Drug ↔️ Drug" backRoute="/home" />
 
-            <View style={styles.container}>
-                <TouchableOpacity style={styles.btn} onPress={checkInteractions}>
-                    <Text style={styles.btnText}>Check Drug-Drug Interactions</Text>
+            <View style={styles.content}>
+                <TouchableOpacity style={styles.checkBtn} onPress={checkInteractions}>
+                    <Text style={styles.checkBtnText}>
+                        Check Drug-Drug Interactions
+                    </Text>
                 </TouchableOpacity>
 
-                {loading && <ActivityIndicator style={{ marginVertical: 12 }} />}
+                {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
 
                 {!loading && pairs.length > 0 && (
                     <FlatList
                         data={pairs}
                         keyExtractor={([a, b]) => `${a.id}-${b.id}`}
+                        contentContainerStyle={{ paddingBottom: 32 }}
                         renderItem={({ item: [a, b] }) => {
                             const key = `${a.id}-${b.id}`;
                             const inters = results[key] || [];
+
                             return (
-                                <View style={styles.card}>
+                                <View style={styles.resultCard}>
                                     <Text style={styles.pairTitle}>
                                         {a.name} ↔️ {b.name}
                                     </Text>
+
                                     {inters.length > 0 ? (
-                                        inters.map((i, idx) => (
-                                            <Text key={idx} style={styles.interText}>
-                                                • [{i.severity}] {i.details}
-                                            </Text>
-                                        ))
+                                        inters.map((i, idx) => {
+                                            const sev = i.severity.toLowerCase();
+                                            let bg = "#c5f1c4";
+                                            if (sev.includes("moderate")) bg = "#ffe9b3";
+                                            else if (sev.includes("major") || sev.includes("high"))
+                                                bg = "#f8c0c0";
+
+                                            return (
+                                                <View key={idx} style={styles.interactionRow}>
+                                                    <View
+                                                        style={[styles.badgeSeverity, { backgroundColor: bg }]}
+                                                    >
+                                                        <Text style={styles.badgeText}>
+                                                            {i.severity.toUpperCase()}
+                                                        </Text>
+                                                    </View>
+                                                    <Text style={styles.interactionText}>
+                                                        {i.details}
+                                                    </Text>
+                                                </View>
+                                            );
+                                        })
                                     ) : (
-                                        <Text style={styles.interText}>No interactions found.</Text>
+                                        <Text style={styles.noResText}>
+                                            No interactions found.
+                                        </Text>
                                     )}
                                 </View>
                             );
@@ -154,24 +176,72 @@ export default function DrugDrugScreen() {
 }
 
 const styles = StyleSheet.create({
-    safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
-    container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-    btn: {
-        marginTop: 8,
-        padding: 12,
+    safeContainer: {
+        flex: 1,
+        backgroundColor: "#f2f4f8",
+    },
+    content: {
+        flex: 1,
+        padding: 16,
+        backgroundColor: "#f2f4f8",
+    },
+    checkBtn: {
         backgroundColor: "#0077b6",
         borderRadius: 8,
+        paddingVertical: 14,
         alignItems: "center",
+        marginBottom: 16,
     },
-    btnText: { color: "#fff", fontWeight: "600" },
-    card: {
-        marginTop: 12,
-        padding: 12,
-        borderWidth: 1,
-        borderRadius: 8,
-        borderColor: "#ddd",
+    checkBtnText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    resultCard: {
         backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 12,
+        // shadow (iOS)
+        shadowColor: "#000",
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        // elevation (Android)
+        elevation: 3,
     },
-    pairTitle: { fontWeight: "600", marginBottom: 8 },
-    interText: { marginLeft: 8, marginBottom: 4 },
+    pairTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 12,
+        color: "#333",
+    },
+    interactionRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        marginBottom: 10,
+    },
+    badgeSeverity: {
+        borderRadius: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginRight: 8,
+    },
+    badgeText: {
+        fontSize: 12,
+        fontWeight: "700",
+        color: "#333",
+    },
+    interactionText: {
+        flex: 1,
+        fontSize: 14,
+        color: "#555",
+        lineHeight: 20,
+    },
+    noResText: {
+        fontSize: 14,
+        color: "#555",
+        fontStyle: "italic",
+        textAlign: "center",
+        paddingVertical: 8,
+    },
 });

@@ -8,6 +8,7 @@ import {
     TextInput,
     ActivityIndicator,
     StyleSheet,
+    Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthProvider";
@@ -61,19 +62,18 @@ export default function DrugFoodScreen() {
                 .select("*, medication(id, name, active_substance)")
                 .eq("patient_id", user.id)
                 .in("status", ["active", "paused"]);
-
             if (error) {
                 console.error("Error fetching schedules:", error);
                 return;
             }
-            const schedules = (data as MedicationSchedule[]).filter((s) =>
+
+            const active = (data as MedicationSchedule[]).filter((s) =>
                 isWithinTreatmentPeriod(s.start_date, s.duration_days)
             );
-            const uniqMap = new Map<number, Medication>();
-            schedules.forEach((s) => {
-                if (s.medication?.id) uniqMap.set(s.medication.id, s.medication);
-            });
-            setMeds(Array.from(uniqMap.values()));
+            const uniqMeds = Array.from(
+                new Map(active.map((s) => [s.medication!.id, s.medication!])).values()
+            );
+            setMeds(uniqMeds);
         };
         fetchMeds();
     }, [user]);
@@ -82,11 +82,11 @@ export default function DrugFoodScreen() {
         if (!selectedMed || !foodInput.trim()) return;
         setLoading(true);
         try {
-            const res = await getDrugFoodInteraction(
+            const response = await getDrugFoodInteraction(
                 selectedMed.id,
                 foodInput.trim()
             );
-            setResults(res);
+            setResults(response);
         } catch (err) {
             console.error("Unexpected error in checkInteraction:", err);
         } finally {
@@ -95,122 +95,199 @@ export default function DrugFoodScreen() {
     }, [selectedMed, foodInput]);
 
     return (
-        <SafeAreaView style={styles.safeContainer}>
+        <SafeAreaView style={styles.safe}>
             <Header title="Drug ↔️ Food" backRoute="/home" />
 
-            <View style={styles.container}>
-                <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginVertical: 8 }}
-                >
-                    {meds.map((m) => (
-                        <TouchableOpacity
-                            key={m.id}
-                            style={[
-                                styles.medButton,
-                                selectedMed?.id === m.id && styles.medButtonSelected,
-                            ]}
-                            onPress={() => {
-                                setSelectedMed(m);
-                                setResults(null);
-                            }}
-                        >
-                            <Text
+            <ScrollView contentContainerStyle={styles.content}>
+                <View style={styles.pillsContainer}>
+                    {meds.map((m) => {
+                        const isSel = selectedMed?.id === m.id;
+                        return (
+                            <TouchableOpacity
+                                key={m.id}
                                 style={[
-                                    styles.medButtonText,
-                                    selectedMed?.id === m.id && styles.medButtonTextSelected,
+                                    styles.pill,
+                                    isSel && styles.pillSelected,
                                 ]}
+                                onPress={() => {
+                                    setSelectedMed(m);
+                                    setResults(null);
+                                }}
                             >
-                                {m.name}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
+                                <Text
+                                    style={[
+                                        styles.pillText,
+                                        isSel && styles.pillTextSelected,
+                                    ]}
+                                    numberOfLines={1}
+                                >
+                                    {m.name}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
 
                 <TextInput
                     style={styles.input}
-                    placeholder="Ex: grapefruit, alcool..."
+                    placeholder="Ex: banana, alcool..."
                     value={foodInput}
                     onChangeText={setFoodInput}
+                    returnKeyType="done"
                 />
 
-                <TouchableOpacity style={styles.btn} onPress={checkInteraction}>
-                    <Text style={styles.btnText}>Check Drug-Food Interactions</Text>
+                <TouchableOpacity
+                    style={styles.checkBtn}
+                    onPress={checkInteraction}
+                >
+                    <Text style={styles.checkBtnText}>
+                        Check Drug-Food Interactions
+                    </Text>
                 </TouchableOpacity>
 
-                {loading && <ActivityIndicator style={{ marginVertical: 12 }} />}
+                {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
 
                 {results !== null && selectedMed && (
-                    <View style={styles.card}>
-                        <Text style={styles.pairTitle}>
+                    <View style={styles.resultCard}>
+                        <Text style={styles.resultTitle}>
                             {selectedMed.name} ↔️ {foodInput.trim()}
                         </Text>
+
                         {results.length > 0 ? (
-                            results.map((i, idx) => (
-                                <Text key={idx} style={styles.interText}>
-                                    • [{i.severity}] {i.details}
-                                </Text>
-                            ))
+                            results.map((i, idx) => {
+                                const sev = i.severity.toLowerCase();
+                                let bgColor = "#c5f1c4";
+                                if (sev.includes("moderate")) bgColor = "#ffe9b3";
+                                if (sev.includes("major") || sev.includes("high")) bgColor = "#f8c0c0";
+
+                                return (
+                                    <View key={idx} style={[styles.interactionRow]}>
+                                        <View
+                                            style={[styles.badgeSeverity, { backgroundColor: bgColor }]}
+                                        >
+                                            <Text style={styles.badgeText}>
+                                                {i.severity.toUpperCase()}
+                                            </Text>
+                                        </View>
+                                        <Text style={styles.interactionText}>
+                                            {i.details}
+                                        </Text>
+                                    </View>
+                                );
+                            })
                         ) : (
-                            <Text style={styles.interText}>No interactions found.</Text>
+                            <Text style={styles.noResText}>No interactions found.</Text>
                         )}
                     </View>
                 )}
-            </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
-    container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-
-    medButton: {
-        paddingVertical: 6,
+    safe: {
+        flex: 1,
+        backgroundColor: "#f2f4f8",
+    },
+    content: {
+        padding: 16,
+        paddingBottom: Platform.OS === "android" ? 32 : 16,
+    },
+    pillsContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        marginBottom: 12,
+        justifyContent: "center",
+    },
+    pill: {
+        minWidth: 100,
+        maxWidth: 140,
         paddingHorizontal: 12,
+        paddingVertical: 8,
+        margin: 4,
+        borderRadius: 20,
         borderWidth: 1,
         borderColor: "#0077b6",
-        borderRadius: 20,
-        marginRight: 8,
+        backgroundColor: "#fff",
+        alignItems: "center",
     },
-    medButtonSelected: {
+    pillSelected: {
         backgroundColor: "#0077b6",
     },
-    medButtonText: {
+    pillText: {
         color: "#0077b6",
+        fontSize: 14,
     },
-    medButtonTextSelected: {
+    pillTextSelected: {
         color: "#fff",
         fontWeight: "600",
     },
-
     input: {
-        marginTop: 8,
-        marginBottom: 4,
+        backgroundColor: "#fff",
+        borderRadius: 8,
         borderWidth: 1,
         borderColor: "#ccc",
-        borderRadius: 6,
-        padding: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        fontSize: 16,
+        marginBottom: 12,
     },
-
-    btn: {
-        marginTop: 8,
-        padding: 12,
+    checkBtn: {
         backgroundColor: "#0077b6",
         borderRadius: 8,
+        paddingVertical: 14,
         alignItems: "center",
+        marginBottom: 16,
     },
-    btnText: { color: "#fff", fontWeight: "600" },
-
-    card: {
-        marginTop: 12,
-        padding: 12,
-        borderWidth: 1,
-        borderRadius: 8,
-        borderColor: "#ddd",
+    checkBtnText: {
+        color: "#fff",
+        fontSize: 16,
+        fontWeight: "600",
+    },
+    resultCard: {
         backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 16,
+        // shadow iOS
+        shadowColor: "#000",
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        // elevation Android
+        elevation: 3,
     },
-    pairTitle: { fontWeight: "600", marginBottom: 8 },
-    interText: { marginLeft: 8, marginBottom: 4 },
+    resultTitle: {
+        fontSize: 16,
+        fontWeight: "600",
+        marginBottom: 12,
+        color: "#333",
+    },
+    interactionRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        marginBottom: 8,
+    },
+    badgeSeverity: {
+        borderRadius: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        marginRight: 8,
+    },
+    badgeText: {
+        fontSize: 12,
+        fontWeight: "700",
+        color: "#333",
+    },
+    interactionText: {
+        flex: 1,
+        fontSize: 14,
+        color: "#555",
+        lineHeight: 20,
+    },
+    noResText: {
+        fontSize: 14,
+        color: "#555",
+        textAlign: "center",
+        paddingVertical: 8,
+    },
 });
