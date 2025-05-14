@@ -9,9 +9,11 @@ import {
     ActivityIndicator,
     StyleSheet,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { getDrugFoodInteraction } from "../../services/interactionService";
+import Header from "../../components/Header";
 
 interface Medication {
     id: number;
@@ -42,13 +44,15 @@ const isWithinTreatmentPeriod = (
 
 export default function DrugFoodScreen() {
     const { user } = useAuth();
+    const router = useRouter();
+
     const [meds, setMeds] = useState<Medication[]>([]);
     const [selectedMed, setSelectedMed] = useState<Medication | null>(null);
     const [foodInput, setFoodInput] = useState("");
     const [results, setResults] = useState<Interaction[] | null>(null);
     const [loading, setLoading] = useState(false);
 
-    // Preia lista de medicamente active
+    // Fetch active meds
     useEffect(() => {
         const fetchMeds = async () => {
             if (!user) return;
@@ -74,7 +78,6 @@ export default function DrugFoodScreen() {
         fetchMeds();
     }, [user]);
 
-    // Cheamă API-ul de interacţiuni medicament-mâncare
     const checkInteraction = useCallback(async () => {
         if (!selectedMed || !foodInput.trim()) return;
         setLoading(true);
@@ -92,70 +95,75 @@ export default function DrugFoodScreen() {
     }, [selectedMed, foodInput]);
 
     return (
-        <SafeAreaView style={styles.container}>
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={{ marginVertical: 8 }}
-            >
-                {meds.map((m) => (
-                    <TouchableOpacity
-                        key={m.id}
-                        style={[
-                            styles.medButton,
-                            selectedMed?.id === m.id && styles.medButtonSelected,
-                        ]}
-                        onPress={() => {
-                            setSelectedMed(m);
-                            setResults(null);
-                        }}
-                    >
-                        <Text
+        <SafeAreaView style={styles.safeContainer}>
+            <Header title="Drug ↔️ Food" backRoute="/home" />
+
+            <View style={styles.container}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={{ marginVertical: 8 }}
+                >
+                    {meds.map((m) => (
+                        <TouchableOpacity
+                            key={m.id}
                             style={[
-                                styles.medButtonText,
-                                selectedMed?.id === m.id && styles.medButtonTextSelected,
+                                styles.medButton,
+                                selectedMed?.id === m.id && styles.medButtonSelected,
                             ]}
+                            onPress={() => {
+                                setSelectedMed(m);
+                                setResults(null);
+                            }}
                         >
-                            {m.name}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </ScrollView>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Ex: grapefruit, alcool..."
-                value={foodInput}
-                onChangeText={setFoodInput}
-            />
-
-            <TouchableOpacity style={styles.btn} onPress={checkInteraction}>
-                <Text style={styles.btnText}>Check Drug-Food Interactions</Text>
-            </TouchableOpacity>
-
-            {loading && <ActivityIndicator style={{ marginVertical: 12 }} />}
-
-            {results !== null && selectedMed && (
-                <View style={styles.card}>
-                    <Text style={styles.pairTitle}>
-                        {selectedMed.name} ↔️ {foodInput.trim()}
-                    </Text>
-                    {results.length > 0 ? (
-                        results.map((i, idx) => (
-                            <Text key={idx} style={styles.interText}>
-                                • [{i.severity}] {i.details}
+                            <Text
+                                style={[
+                                    styles.medButtonText,
+                                    selectedMed?.id === m.id && styles.medButtonTextSelected,
+                                ]}
+                            >
+                                {m.name}
                             </Text>
-                        ))
-                    ) : (
-                        <Text style={styles.interText}>No interactions found.</Text>
-                    )}
-                </View>
-            )}
+                        </TouchableOpacity>
+                    ))}
+                </ScrollView>
+
+                <TextInput
+                    style={styles.input}
+                    placeholder="Ex: grapefruit, alcool..."
+                    value={foodInput}
+                    onChangeText={setFoodInput}
+                />
+
+                <TouchableOpacity style={styles.btn} onPress={checkInteraction}>
+                    <Text style={styles.btnText}>Check Drug-Food Interactions</Text>
+                </TouchableOpacity>
+
+                {loading && <ActivityIndicator style={{ marginVertical: 12 }} />}
+
+                {results !== null && selectedMed && (
+                    <View style={styles.card}>
+                        <Text style={styles.pairTitle}>
+                            {selectedMed.name} ↔️ {foodInput.trim()}
+                        </Text>
+                        {results.length > 0 ? (
+                            results.map((i, idx) => (
+                                <Text key={idx} style={styles.interText}>
+                                    • [{i.severity}] {i.details}
+                                </Text>
+                            ))
+                        ) : (
+                            <Text style={styles.interText}>No interactions found.</Text>
+                        )}
+                    </View>
+                )}
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
     container: { flex: 1, padding: 16, backgroundColor: "#fff" },
 
     medButton: {
@@ -201,6 +209,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 8,
         borderColor: "#ddd",
+        backgroundColor: "#fff",
     },
     pairTitle: { fontWeight: "600", marginBottom: 8 },
     interText: { marginLeft: 8, marginBottom: 4 },

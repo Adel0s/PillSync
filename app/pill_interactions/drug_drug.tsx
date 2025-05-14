@@ -8,6 +8,7 @@ import {
     StyleSheet,
     TouchableOpacity,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthProvider";
 import { supabase } from "../../lib/supabase";
 import { getDrugDrugInteraction } from "../../services/interactionService";
@@ -30,7 +31,6 @@ interface MedicationSchedule {
 
 type Interaction = { severity: string; summary: string; details: string };
 
-// Verifică dacă suntem încă în perioada de tratament
 const isWithinTreatmentPeriod = (
     start_date: string,
     duration_days: number
@@ -43,12 +43,14 @@ const isWithinTreatmentPeriod = (
 
 export default function DrugDrugScreen() {
     const { user } = useAuth();
+    const router = useRouter();
+
     const [meds, setMeds] = useState<Medication[]>([]);
     const [pairs, setPairs] = useState<[Medication, Medication][]>([]);
     const [results, setResults] = useState<Record<string, Interaction[]>>({});
     const [loading, setLoading] = useState(false);
 
-    // Preia lista de medicamente active şi generează perechile
+    // Fetch active meds + generate pairs
     const fetchMeds = useCallback(async () => {
         if (!user) return;
         setLoading(true);
@@ -92,7 +94,6 @@ export default function DrugDrugScreen() {
         fetchMeds();
     }, [fetchMeds]);
 
-    // Cheamă API-ul de interacţiuni pentru fiecare pereche
     const checkInteractions = useCallback(async () => {
         if (pairs.length === 0) return;
         setLoading(true);
@@ -111,45 +112,49 @@ export default function DrugDrugScreen() {
     }, [pairs]);
 
     return (
+        <SafeAreaView style={styles.safeContainer}>
+            <Header title="Drug ↔️ Drug" backRoute="/home" />
 
-        <SafeAreaView style={styles.container}>
-            <TouchableOpacity style={styles.btn} onPress={checkInteractions}>
-                <Text style={styles.btnText}>Check Drug-Drug Interactions</Text>
-            </TouchableOpacity>
+            <View style={styles.container}>
+                <TouchableOpacity style={styles.btn} onPress={checkInteractions}>
+                    <Text style={styles.btnText}>Check Drug-Drug Interactions</Text>
+                </TouchableOpacity>
 
-            {loading && <ActivityIndicator style={{ marginVertical: 12 }} />}
+                {loading && <ActivityIndicator style={{ marginVertical: 12 }} />}
 
-            {!loading && pairs.length > 0 && (
-                <FlatList
-                    data={pairs}
-                    keyExtractor={([a, b]) => `${a.id}-${b.id}`}
-                    renderItem={({ item: [a, b] }) => {
-                        const key = `${a.id}-${b.id}`;
-                        const inters = results[key] || [];
-                        return (
-                            <View style={styles.card}>
-                                <Text style={styles.pairTitle}>
-                                    {a.name} ↔️ {b.name}
-                                </Text>
-                                {inters.length > 0 ? (
-                                    inters.map((i, idx) => (
-                                        <Text key={idx} style={styles.interText}>
-                                            • [{i.severity}] {i.details}
-                                        </Text>
-                                    ))
-                                ) : (
-                                    <Text style={styles.interText}>No interactions found.</Text>
-                                )}
-                            </View>
-                        );
-                    }}
-                />
-            )}
+                {!loading && pairs.length > 0 && (
+                    <FlatList
+                        data={pairs}
+                        keyExtractor={([a, b]) => `${a.id}-${b.id}`}
+                        renderItem={({ item: [a, b] }) => {
+                            const key = `${a.id}-${b.id}`;
+                            const inters = results[key] || [];
+                            return (
+                                <View style={styles.card}>
+                                    <Text style={styles.pairTitle}>
+                                        {a.name} ↔️ {b.name}
+                                    </Text>
+                                    {inters.length > 0 ? (
+                                        inters.map((i, idx) => (
+                                            <Text key={idx} style={styles.interText}>
+                                                • [{i.severity}] {i.details}
+                                            </Text>
+                                        ))
+                                    ) : (
+                                        <Text style={styles.interText}>No interactions found.</Text>
+                                    )}
+                                </View>
+                            );
+                        }}
+                    />
+                )}
+            </View>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
+    safeContainer: { flex: 1, backgroundColor: "#f9f9f9" },
     container: { flex: 1, padding: 16, backgroundColor: "#fff" },
     btn: {
         marginTop: 8,
@@ -165,6 +170,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderRadius: 8,
         borderColor: "#ddd",
+        backgroundColor: "#fff",
     },
     pairTitle: { fontWeight: "600", marginBottom: 8 },
     interText: { marginLeft: 8, marginBottom: 4 },
