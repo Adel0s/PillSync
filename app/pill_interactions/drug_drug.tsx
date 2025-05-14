@@ -49,6 +49,7 @@ export default function DrugDrugScreen() {
     const [pairs, setPairs] = useState<[Medication, Medication][]>([]);
     const [results, setResults] = useState<Record<string, Interaction[]>>({});
     const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
 
     // Fetch active meds + generate pairs
     const fetchMeds = useCallback(async () => {
@@ -88,6 +89,13 @@ export default function DrugDrugScreen() {
         }
     }, [user]);
 
+    // Pull-to-refresh handler
+    const onRefresh = useCallback(async () => {
+        setRefreshing(true);
+        await fetchMeds();
+        setRefreshing(false);
+    }, [fetchMeds]);
+
     useEffect(() => {
         fetchMeds();
     }, [fetchMeds]);
@@ -122,54 +130,65 @@ export default function DrugDrugScreen() {
 
                 {loading && <ActivityIndicator style={{ marginTop: 16 }} />}
 
-                {!loading && pairs.length > 0 && (
-                    <FlatList
-                        data={pairs}
-                        keyExtractor={([a, b]) => `${a.id}-${b.id}`}
-                        contentContainerStyle={{ paddingBottom: 32 }}
-                        renderItem={({ item: [a, b] }) => {
-                            const key = `${a.id}-${b.id}`;
-                            const inters = results[key] || [];
+                <FlatList
+                    data={pairs}
+                    keyExtractor={([a, b]) => `${a.id}-${b.id}`}
+                    refreshing={refreshing}
+                    onRefresh={onRefresh}
+                    ListEmptyComponent={
+                        !loading ? (
+                            <View style={styles.emptyContainer}>
+                                <Text style={styles.emptyText}>
+                                    ℹ️ You don’t have two medications in treatment simultaneously yet!
+                                    {"\n"}
+                                    ➕ Add at least two different medications to unlock this feature. 💊
+                                </Text>
+                            </View>
+                        ) : null
+                    }
+                    contentContainerStyle={{ flexGrow: 1, paddingBottom: 32 }}
+                    renderItem={({ item: [a, b] }) => {
+                        const key = `${a.id}-${b.id}`;
+                        const inters = results[key] || [];
 
-                            return (
-                                <View style={styles.resultCard}>
-                                    <Text style={styles.pairTitle}>
-                                        {a.name} ↔️ {b.name}
-                                    </Text>
+                        return (
+                            <View style={styles.resultCard}>
+                                <Text style={styles.pairTitle}>
+                                    {a.name} ↔️ {b.name}
+                                </Text>
 
-                                    {inters.length > 0 ? (
-                                        inters.map((i, idx) => {
-                                            const sev = i.severity.toLowerCase();
-                                            let bg = "#c5f1c4";
-                                            if (sev.includes("moderate")) bg = "#ffe9b3";
-                                            else if (sev.includes("major") || sev.includes("high"))
-                                                bg = "#f8c0c0";
+                                {inters.length > 0 ? (
+                                    inters.map((i, idx) => {
+                                        const sev = i.severity.toLowerCase();
+                                        let bg = "#c5f1c4";
+                                        if (sev.includes("moderate")) bg = "#ffe9b3";
+                                        else if (sev.includes("major") || sev.includes("high"))
+                                            bg = "#f8c0c0";
 
-                                            return (
-                                                <View key={idx} style={styles.interactionRow}>
-                                                    <View
-                                                        style={[styles.badgeSeverity, { backgroundColor: bg }]}
-                                                    >
-                                                        <Text style={styles.badgeText}>
-                                                            {i.severity.toUpperCase()}
-                                                        </Text>
-                                                    </View>
-                                                    <Text style={styles.interactionText}>
-                                                        {i.details}
+                                        return (
+                                            <View key={idx} style={styles.interactionRow}>
+                                                <View
+                                                    style={[styles.badgeSeverity, { backgroundColor: bg }]}
+                                                >
+                                                    <Text style={styles.badgeText}>
+                                                        {i.severity.toUpperCase()}
                                                     </Text>
                                                 </View>
-                                            );
-                                        })
-                                    ) : (
-                                        <Text style={styles.noResText}>
-                                            No interactions found.
-                                        </Text>
-                                    )}
-                                </View>
-                            );
-                        }}
-                    />
-                )}
+                                                <Text style={styles.interactionText}>
+                                                    {i.details}
+                                                </Text>
+                                            </View>
+                                        );
+                                    })
+                                ) : (
+                                    <Text style={styles.noResText}>
+                                        No interactions found.
+                                    </Text>
+                                )}
+                            </View>
+                        );
+                    }}
+                />
             </View>
         </SafeAreaView>
     );
@@ -243,5 +262,18 @@ const styles = StyleSheet.create({
         fontStyle: "italic",
         textAlign: "center",
         paddingVertical: 8,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingTop: 40,
+    },
+    emptyText: {
+        fontSize: 16,
+        color: "#555",
+        textAlign: "center",
+        lineHeight: 24,
+        paddingHorizontal: 20,
     },
 });
