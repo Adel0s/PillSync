@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
     SafeAreaView,
-    View,
     Text,
     ScrollView,
     TouchableOpacity,
@@ -9,6 +8,8 @@ import {
     ActivityIndicator,
     StyleSheet,
     Platform,
+    FlatList,
+    View,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "../../context/AuthProvider";
@@ -99,8 +100,13 @@ export default function DrugFoodScreen() {
             <Header title="Drug ↔️ Food" backRoute="/home" />
 
             <ScrollView contentContainerStyle={styles.content}>
-                <View style={styles.pillsContainer}>
-                    {meds.map((m) => {
+                <FlatList
+                    data={meds}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    keyExtractor={(m) => m.id.toString()}
+                    contentContainerStyle={styles.pillsContainer}
+                    renderItem={({ item: m }) => {
                         const isSel = selectedMed?.id === m.id;
                         return (
                             <TouchableOpacity
@@ -131,8 +137,8 @@ export default function DrugFoodScreen() {
                                 </Text>
                             </TouchableOpacity>
                         );
-                    })}
-                </View>
+                    }}
+                />
 
                 <TextInput
                     style={styles.input}
@@ -167,7 +173,7 @@ export default function DrugFoodScreen() {
                                 if (sev.includes("major") || sev.includes("high")) bgColor = "#f8c0c0";
 
                                 return (
-                                    <View key={idx} style={[styles.interactionRow]}>
+                                    <View key={idx} style={styles.interactionRow}>
                                         <View
                                             style={[styles.badgeSeverity, { backgroundColor: bgColor }]}
                                         >
@@ -201,17 +207,17 @@ const styles = StyleSheet.create({
         paddingBottom: Platform.OS === "android" ? 32 : 16,
     },
     pillsContainer: {
-        flexDirection: "row",
-        flexWrap: "wrap",
+        paddingVertical: 16,
+        paddingHorizontal: 4,
         marginBottom: 12,
-        justifyContent: "center",
+        minHeight: 70,
     },
     pill: {
         minWidth: 100,
-        //maxWidth: 160,
+        maxWidth: 320,
         paddingHorizontal: 12,
         paddingVertical: 8,
-        margin: 4,
+        marginHorizontal: 4,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: "#0077b6",
