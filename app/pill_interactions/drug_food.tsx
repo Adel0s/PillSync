@@ -110,8 +110,14 @@ export default function DrugFoodScreen() {
                                     isSel && styles.pillSelected,
                                 ]}
                                 onPress={() => {
-                                    setSelectedMed(m);
-                                    setResults(null);
+                                    // toggle selection: deselect if already selected
+                                    if (isSel) {
+                                        setSelectedMed(null);
+                                        setResults(null);
+                                    } else {
+                                        setSelectedMed(m);
+                                        setResults(null);
+                                    }
                                 }}
                             >
                                 <Text
@@ -119,7 +125,7 @@ export default function DrugFoodScreen() {
                                         styles.pillText,
                                         isSel && styles.pillTextSelected,
                                     ]}
-                                    numberOfLines={1}
+                                    numberOfLines={2}
                                 >
                                     {m.name}
                                 </Text>
@@ -202,7 +208,7 @@ const styles = StyleSheet.create({
     },
     pill: {
         minWidth: 100,
-        maxWidth: 140,
+        //maxWidth: 160,
         paddingHorizontal: 12,
         paddingVertical: 8,
         margin: 4,
