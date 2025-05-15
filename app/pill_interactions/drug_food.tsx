@@ -53,6 +53,7 @@ export default function DrugFoodScreen() {
     const [foodInput, setFoodInput] = useState("");
     const [results, setResults] = useState<Interaction[] | null>(null);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string>("");
 
     // Fetch active meds
     useEffect(() => {
@@ -80,7 +81,16 @@ export default function DrugFoodScreen() {
     }, [user]);
 
     const checkInteraction = useCallback(async () => {
-        if (!selectedMed || !foodInput.trim()) return;
+        // validate inputs
+        if (!selectedMed) {
+            setError("Please select a medication.");
+            return;
+        }
+        if (!foodInput.trim()) {
+            setError("Please enter a food or drink.");
+            return;
+        }
+        setError("");
         setLoading(true);
         try {
             const response = await getDrugFoodInteraction(
@@ -116,6 +126,7 @@ export default function DrugFoodScreen() {
                                     isSel && styles.pillSelected,
                                 ]}
                                 onPress={() => {
+                                    setError("");
                                     // toggle selection: deselect if already selected
                                     if (isSel) {
                                         setSelectedMed(null);
@@ -144,9 +155,13 @@ export default function DrugFoodScreen() {
                     style={styles.input}
                     placeholder="Ex: banana, alcool..."
                     value={foodInput}
-                    onChangeText={setFoodInput}
+                    onChangeText={(text) => {
+                        setError("");
+                        setFoodInput(text);
+                    }}
                     returnKeyType="done"
                 />
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
                 <TouchableOpacity
                     style={styles.checkBtn}
@@ -214,7 +229,6 @@ const styles = StyleSheet.create({
     },
     pill: {
         minWidth: 100,
-        maxWidth: 320,
         paddingHorizontal: 12,
         paddingVertical: 8,
         marginHorizontal: 4,
@@ -243,6 +257,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 10,
         fontSize: 16,
+        marginBottom: 4,
+    },
+    errorText: {
+        color: "#d32f2f",
+        fontSize: 14,
         marginBottom: 12,
     },
     checkBtn: {
@@ -261,11 +280,9 @@ const styles = StyleSheet.create({
         backgroundColor: "#fff",
         borderRadius: 12,
         padding: 16,
-        // shadow iOS
         shadowColor: "#000",
         shadowOpacity: 0.05,
         shadowRadius: 8,
-        // elevation Android
         elevation: 3,
     },
     resultTitle: {
