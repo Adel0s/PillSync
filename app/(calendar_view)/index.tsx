@@ -18,6 +18,7 @@ import {
     fetchYearlyCalendarData,
     DayStats,
     PillLog,
+    CalendarData
 } from "../../services/calendarService";
 import Header from "../../components/Header";
 import { exportCalendarReport } from "../../services/reportService";
@@ -32,6 +33,8 @@ export default function CalendarView() {
     const [userId, setUserId] = useState<string | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [viewMode, setViewMode] = useState<"monthly" | "yearly">("monthly");
+
+    const [scheduleTimesByDay, setScheduleTimesByDay] = useState<Record<string, number[]>>({});
 
     // lunar
     const [statsByDay, setStatsByDay] = useState<Record<string, DayStats>>({});
@@ -85,12 +88,14 @@ export default function CalendarView() {
                     timesById: tById,
                     timeToSchedule: t2s,
                     scheduleNamesById: namesById,
+                    scheduleTimesByDay: stByDay,
                 } = await fetchCalendarData(userId, year, month);
                 setStatsByDay(sByDay);
                 setLogsByDay(lByDay);
                 setTimesById(tById);
                 setTimeToSchedule(t2s);
                 setScheduleNamesById(namesById);
+                setScheduleTimesByDay(stByDay);
 
                 // --- 1) media zilnică (ce exista deja) ---
                 const ratios = Object.values(sByDay).map(s => s.taken / (s.totalPlanned || 1));
@@ -166,8 +171,10 @@ export default function CalendarView() {
 
     // render log
     const renderLog = ({ item }: { item: PillLog }) => {
+        //console.log("renderLog", item);
         const schedId = timeToSchedule[item.schedule_time_id];
-        const medName = scheduleNamesById[schedId] || "–";
+        const medName = scheduleNamesById[schedId] || "-";
+        //console.log(scheduleNamesById, schedId, medName);
         // 1. Ia raw string-ul, ex: "21:00:00"
         const rawScheduled = timesById[item.schedule_time_id] || "--:--";
 
@@ -184,15 +191,43 @@ export default function CalendarView() {
         const actualDate = new Date(isoString);
 
         // 3. Formatăm doar ora și minutul, cu zero-padding
-        const actualTime = actualDate.toLocaleTimeString(undefined, {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-        });
+        const actualTime =
+            item.status === "unknown"
+                ? "XX:XX"
+                : actualDate.toLocaleTimeString(undefined, {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: false,
+                });
+
+
         const iconColor =
-            item.status === "taken" ? "#4CAF50" : item.status === "skipped" ? "#FF3B30" : "#FF9500";
+            item.status === "taken" ? "#4CAF50" :
+                item.status === "skipped" ? "#FF3B30" :
+                    item.status === "snoozed" ? "#FF9500" :
+                        "#999999";  // grey for unknown
         const icon =
-            item.status === "taken" ? "checkmark-circle" : item.status === "skipped" ? "close-circle" : "help-circle";
+            item.status === "taken" ? "checkmark-circle" :
+                item.status === "skipped" ? "close-circle" :
+                    item.status === "snoozed" ? "alarm" :
+                        "help-circle";
+
+        const snoozedUntilStr = item.note
+            ? item.note
+                // înlocuiește primul spațiu cu 'T' pentru format ISO
+                .replace(" ", "T")
+                // adaugă ":00" la offset-ul de două cifre, ca să devină "+00:00"
+                .replace(/([+-]\d{2})$/, "$1:00")
+            : "";
+
+        const snoozedUntilDate = new Date(snoozedUntilStr);
+        const snoozedUntil = item.status === "unknown"
+            ? "XX:XX"
+            : snoozedUntilDate.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+            });
 
         return (
             <View style={styles.logRow}>
@@ -200,8 +235,61 @@ export default function CalendarView() {
                 <Text style={styles.logTime}>{scheduledTime}</Text>
                 <Text style={styles.logTime}>{actualTime}</Text>
                 <Ionicons name={icon} size={20} color={iconColor} />
-                {item.note && <Text style={styles.noteText}>{item.note}</Text>}
+                {item.note && <Text style={styles.noteText}>{snoozedUntil}</Text>}
             </View>
+        );
+    };
+
+    // **NEW** build the modal’s list by merging real logs with the missing scheduleTimes
+    const ModalContent = () => {
+        if (!selectedDay) return null;
+        const logsReal = logsByDay[selectedDay] || [];
+        const allTimes = scheduleTimesByDay[selectedDay] || [];
+        const missing = allTimes.filter(
+            sid => !logsReal.some(l => l.schedule_time_id === sid)
+        );
+
+        // assemble a true PillLog[] for the placeholders
+        const placeholderLogs: PillLog[] = missing.map((stid, idx) => ({
+            id: -stid,
+            schedule_id: timeToSchedule[stid],
+            schedule_time_id: stid,
+            taken_at: "",            // no actual timestamp
+            status: "unknown",       // correct union type
+            note: null,
+        }));
+
+        const logsForDay: PillLog[] = [...logsReal, ...placeholderLogs];
+
+        return (
+            <Modal
+                visible
+                animationType="slide"
+                transparent
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>{selectedDay}</Text>
+                        <FlatList
+                            data={logsForDay}
+                            keyExtractor={item => item.id.toString()}
+                            renderItem={renderLog}
+                            ListEmptyComponent={
+                                <Text style={{ textAlign: "center", marginTop: 20 }}>
+                                    No logs
+                                </Text>
+                            }
+                        />
+                        <TouchableOpacity
+                            style={styles.closeButton}
+                            onPress={() => setModalVisible(false)}
+                        >
+                            <Text style={styles.closeText}>Close</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         );
     };
 
@@ -298,6 +386,7 @@ export default function CalendarView() {
                                     let bg = "#eee";
                                     if (c.label && c.dateStr && c.dateStr <= todayStr) {
                                         const stats = statsByDay[c.dateStr];
+                                        // console.log("stats: ", stats);
                                         if (stats?.totalPlanned > 0) {
                                             const pct = stats.taken / stats.totalPlanned;
                                             bg = pct >= 1 ? "#4CAF50" : pct >= 0.5 ? "#FF9500" : "#FF3B30";
@@ -309,7 +398,12 @@ export default function CalendarView() {
                                             style={[styles.cell, { backgroundColor: bg }]}
                                             activeOpacity={c.label ? 0.6 : 1}
                                             onPress={() => {
-                                                if (c.dateStr && logsByDay[c.dateStr]) {
+                                                const hasLogs = c.dateStr && (logsByDay[c.dateStr]?.length ?? 0) > 0;
+                                                const hasUnknown = c.dateStr && (statsByDay[c.dateStr]?.unknown ?? 0) > 0;
+                                                console.log("hasLogs", hasLogs, "hasUnknown", hasUnknown);
+                                                console.log("logsByDay", c.dateStr ? logsByDay[c.dateStr] : undefined);
+                                                console.log("statsByDay", c.dateStr ? statsByDay[c.dateStr] : undefined);
+                                                if (c.dateStr && (hasLogs || hasUnknown)) {
                                                     setSelectedDay(c.dateStr);
                                                     setModalVisible(true);
                                                 }
@@ -333,28 +427,20 @@ export default function CalendarView() {
                                         {Math.abs(currentAdherence - prevAdherence)}% față de luna trecută
                                     </Text>
                                 </View>
-
-                                {/* procentul de aderare vechi */}
                                 <Text style={styles.adherenceText}>Procent aderare: {currentAdherence}%</Text>
-
-                                {/* **noile metrici** */}
                                 <View style={styles.metricsRow}>
                                     <Text style={styles.metricText}>
                                         MPR: {monthlyMPR}%{" "}
-                                        <TouchableOpacity onPress={() => setInfoMetric("mpr")}>
-                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => setInfoMetric("mpr")} />
                                     </Text>
                                     <Text style={styles.metricText}>
                                         PDC: {monthlyPDC}%{" "}
-                                        <TouchableOpacity onPress={() => setInfoMetric("pdc")}>
-                                        </TouchableOpacity>
+                                        <TouchableOpacity onPress={() => setInfoMetric("pdc")} />
                                     </Text>
                                 </View>
-
-                                {/* legenda */}
                                 <View style={styles.legendContainer}>
                                     {[
-                                        { col: "#4CAF50", txt: "100% luate" },
+                                        { col: "#4CAF50", txt: "100%" },
                                         { col: "#FF9500", txt: "50–99%" },
                                         { col: "#FF3B30", txt: "<50%" },
                                     ].map(({ col, txt }) => (
@@ -380,29 +466,7 @@ export default function CalendarView() {
                                 </TouchableOpacity>
                             </View>
                             {/* Modal detalii */}
-                            <Modal
-                                visible={modalVisible}
-                                animationType="slide"
-                                transparent
-                                onRequestClose={() => setModalVisible(false)}
-                            >
-                                <View style={styles.modalOverlay}>
-                                    <View style={styles.modalContent}>
-                                        <Text style={styles.modalTitle}>{selectedDay}</Text>
-                                        <FlatList
-                                            data={selectedDay ? logsByDay[selectedDay] : []}
-                                            keyExtractor={item => item.id.toString()}
-                                            renderItem={renderLog}
-                                            ListEmptyComponent={
-                                                <Text style={{ textAlign: "center", marginTop: 20 }}>Nicio înregistrare</Text>
-                                            }
-                                        />
-                                        <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-                                            <Text style={styles.closeText}>Închide</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </View>
-                            </Modal>
+                            {modalVisible && <ModalContent />}
                         </>
                     )
                 ) : (
@@ -480,7 +544,7 @@ const styles = StyleSheet.create({
     noteText: { flex: 0.4, fontSize: 14, color: "#555", marginLeft: 8 },
     closeButton: { marginTop: 12, alignSelf: "center", padding: 10, backgroundColor: "#20A0D8", borderRadius: 8 },
     closeText: { color: "#fff", fontWeight: "bold" },
-    // **stiluri pentru tooltip**
+
     tooltipOverlay: {
         flex: 1,
         backgroundColor: "rgba(0,0,0,0.4)",
