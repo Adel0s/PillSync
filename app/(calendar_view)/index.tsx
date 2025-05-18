@@ -26,6 +26,7 @@ const WEEK_DAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CELL_MARGIN = 2;
 const CELL_SIZE = (SCREEN_WIDTH - CELL_MARGIN * 2 * 7 - 32) / 7;
+const MONTHS_PER_ROW = 4;
 
 export default function CalendarView() {
     const [userId, setUserId] = useState<string | null>(null);
@@ -40,6 +41,13 @@ export default function CalendarView() {
     const [scheduleNamesById, setScheduleNamesById] = useState<Record<number, string>>({});
     const [currentAdherence, setCurrentAdherence] = useState(0);
     const [prevAdherence, setPrevAdherence] = useState(0);
+
+    // **noi metrici**
+    const [monthlyMPR, setMonthlyMPR] = useState(0);
+    const [monthlyPDC, setMonthlyPDC] = useState(0);
+
+    // **tooltip pentru metrici**
+    const [infoMetric, setInfoMetric] = useState<"adherence" | "mpr" | "pdc" | null>(null);
 
     // anual
     const [yearlyStats, setYearlyStats] = useState<Record<string, DayStats>>({});
@@ -84,12 +92,32 @@ export default function CalendarView() {
                 setTimeToSchedule(t2s);
                 setScheduleNamesById(namesById);
 
+                // --- 1) media zilnică (ce exista deja) ---
                 const ratios = Object.values(sByDay).map(s => s.taken / (s.totalPlanned || 1));
                 const avgCur = ratios.length
                     ? ratios.reduce((a, b) => a + b, 0) / ratios.length
                     : 0;
                 setCurrentAdherence(Math.round(avgCur * 100));
 
+                // --- 2) MPR = totalTaken / totalPlanned ---
+                const totalPlanned = Object.values(sByDay).reduce((sum, s) => sum + s.totalPlanned, 0);
+                const totalTaken = Object.values(sByDay).reduce((sum, s) => sum + s.taken, 0);
+                const mpr = totalPlanned > 0
+                    ? Math.round((totalTaken / totalPlanned) * 100)
+                    : 0;
+                setMonthlyMPR(mpr);
+
+                // --- 3) PDC = zile cu 100% luate / zile cu planificate ---
+                const daysWithPlan = Object.values(sByDay).filter(s => s.totalPlanned > 0).length;
+                const daysCovered = Object.values(sByDay)
+                    .filter(s => s.totalPlanned > 0 && s.taken >= s.totalPlanned)
+                    .length;
+                const pdc = daysWithPlan > 0
+                    ? Math.round((daysCovered / daysWithPlan) * 100)
+                    : 0;
+                setMonthlyPDC(pdc);
+
+                // calcul luna precedentă (numai media zilnică, pentru comparație)
                 const prevDate = new Date(year, currentMonth.getMonth() - 1, 1);
                 const py = prevDate.getFullYear();
                 const pm = prevDate.getMonth() + 1;
@@ -99,6 +127,7 @@ export default function CalendarView() {
                     ? prevRatios.reduce((a, b) => a + b, 0) / prevRatios.length
                     : 0;
                 setPrevAdherence(Math.round(avgPrev * 100));
+
             } else {
                 const startISO = new Date(year - 1, currentMonth.getMonth(), 1, 0, 0, 0).toISOString();
                 const endISO = new Date(year, currentMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
@@ -304,7 +333,25 @@ export default function CalendarView() {
                                         {Math.abs(currentAdherence - prevAdherence)}% față de luna trecută
                                     </Text>
                                 </View>
+
+                                {/* procentul de aderare vechi */}
                                 <Text style={styles.adherenceText}>Procent aderare: {currentAdherence}%</Text>
+
+                                {/* **noile metrici** */}
+                                <View style={styles.metricsRow}>
+                                    <Text style={styles.metricText}>
+                                        MPR: {monthlyMPR}%{" "}
+                                        <TouchableOpacity onPress={() => setInfoMetric("mpr")}>
+                                        </TouchableOpacity>
+                                    </Text>
+                                    <Text style={styles.metricText}>
+                                        PDC: {monthlyPDC}%{" "}
+                                        <TouchableOpacity onPress={() => setInfoMetric("pdc")}>
+                                        </TouchableOpacity>
+                                    </Text>
+                                </View>
+
+                                {/* legenda */}
                                 <View style={styles.legendContainer}>
                                     {[
                                         { col: "#4CAF50", txt: "100% luate" },
@@ -400,6 +447,15 @@ const styles = StyleSheet.create({
     down: { color: "#FF3B30" },
 
     adherenceText: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+    metricsRow: {
+        alignItems: "flex-start",
+        marginBottom: 12,
+    },
+    metricText: {
+        fontSize: 14,
+        color: "#333",
+        marginVertical: 2,
+    },
     legendContainer: { flexDirection: "row", marginBottom: 12 },
     legendItem: { flexDirection: "row", alignItems: "center", marginHorizontal: 8 },
     legendColor: { width: 16, height: 16, borderRadius: 4, marginRight: 4 },
@@ -409,8 +465,9 @@ const styles = StyleSheet.create({
     reportButtonText: { color: "#fff", fontWeight: "600" },
 
     sectionTitle: { fontSize: 16, fontWeight: "600", marginVertical: 8, textAlign: "center" },
+
     heatmapContainer: { flexDirection: "row", marginTop: 8 },
-    monthColumn: { alignItems: "center", marginHorizontal: 4 },
+    monthColumn: { alignItems: "center", flexBasis: `${100 / MONTHS_PER_ROW}%` },
     monthLabel: { fontSize: 12, marginBottom: 4 },
     heatCell: { width: CELL_SIZE - 4, height: CELL_SIZE - 4, margin: 2, borderRadius: 4 },
 
@@ -423,4 +480,30 @@ const styles = StyleSheet.create({
     noteText: { flex: 0.4, fontSize: 14, color: "#555", marginLeft: 8 },
     closeButton: { marginTop: 12, alignSelf: "center", padding: 10, backgroundColor: "#20A0D8", borderRadius: 8 },
     closeText: { color: "#fff", fontWeight: "bold" },
+    // **stiluri pentru tooltip**
+    tooltipOverlay: {
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.4)",
+        justifyContent: "center",
+        alignItems: "center",
+    },
+    tooltipBox: {
+        backgroundColor: "#fff",
+        padding: 16,
+        borderRadius: 8,
+        width: "80%",
+    },
+    tooltipTitle: {
+        fontSize: 16,
+        fontWeight: "bold",
+        marginBottom: 8,
+    },
+    tooltipClose: {
+        marginTop: 12,
+        alignSelf: "flex-end",
+    },
+    tooltipCloseText: {
+        color: "#20A0D8",
+        fontWeight: "bold",
+    },
 });
