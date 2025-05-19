@@ -15,6 +15,7 @@ import CircularProgress from "react-native-circular-progress-indicator";
 import { supabase } from "../lib/supabase";
 import { useFocusEffect } from "@react-navigation/native";
 import ScheduleItemCard from "../components/ScheduleItemCard";
+import { cancelAllNotifications, cancelLocalNotification, scheduleAllReminders, cancelAllLocalNotifications } from '../services/notificationService';
 
 const COLORS = {
     primaryDark: "#03045e",
@@ -99,27 +100,42 @@ export default function Home() {
                 end.setDate(end.getDate() + schedule.duration_days);
                 return today >= start && today <= end;
             });
-            // 3) Găsește toate pill_logs cu status = 'snoozed' care au note ≤ acum  
+            // Find all pill_logs with status = 'snoozed' wich have note ≤ now  
+            // note = snoozedUntil
             const nowIso = new Date().toISOString();
             const { data: snoozedLogs, error: fetchErr } = await supabase
                 .from("pill_logs")
-                .select("id")
+                .select("id, schedule_id, schedule_time_id")
                 .eq("status", "snoozed")
-                .lte("note", nowIso);
+                .lte("note", nowIso)
+                .eq("processed", false);
             if (fetchErr) throw fetchErr;
+            console.log("Snoozed logs:", snoozedLogs);
 
             if (snoozedLogs?.length) {
-                // Pregătește array-ul de obiecte cu același id, dar status/note resetate
-                const toReset = snoozedLogs.map(l => ({
-                    id: l.id,
+                // insert new logs with status = null for each snoozed log
+                // (this will be used to show the pill as not taken)
+                const resetEntries = snoozedLogs.map(l => ({
+                    schedule_id: l.schedule_id,
+                    schedule_time_id: l.schedule_time_id,
                     status: null,
                     note: null,
+                    taken_at: new Date().toISOString(),
                 }));
-                // Upsert pe id → UPDATE pentru cele existente
-                const { error: upErr } = await supabase
+                const { error: insertErr } = await supabase
                     .from("pill_logs")
-                    .upsert(toReset, { onConflict: "id" });
-                if (upErr) console.error("Error resetting snoozes:", upErr);
+                    .insert(resetEntries);
+                if (insertErr) console.error("Error inserting reset logs:", insertErr);
+
+                // Mark the snoozed logs as processed
+                const processedUpdates = snoozedLogs.map(l => ({
+                    id: l.id,
+                    processed: true,
+                }));
+                const { error: updateErr } = await supabase
+                    .from("pill_logs")
+                    .upsert(processedUpdates, { onConflict: "id" });
+                if (updateErr) console.error("Error marking snoozes as processed:", updateErr);
             }
             // For each schedule, check pill_logs and add an isTaken flag
             const startOfDay = new Date(
@@ -140,13 +156,14 @@ export default function Home() {
                 status: "none" | "taken" | "skipped" | "snoozed";
                 snoozedUntil: string | null;
                 remainingQuantity: number;
+                logId: number | null;
             };
 
             const items: Promise<Item>[] = filtered.flatMap(schedule =>
                 schedule.medication_schedule_times.map(async timeObj => {
                     const { data: logs, error: logError } = await supabase
                         .from("pill_logs")
-                        .select("status, note")
+                        .select("id, status, note")
                         .eq("schedule_id", schedule.id)
                         .eq("schedule_time_id", timeObj.id)
                         .gte("taken_at", startOfDay.toISOString())
@@ -164,6 +181,7 @@ export default function Home() {
                         status: (log?.status as any) ?? "none",
                         snoozedUntil: log?.status === "snoozed" ? log.note : null,
                         remainingQuantity: schedule.remaining_quantity,
+                        logId: log?.id ?? null,
                     };
                 })
             );
@@ -183,6 +201,7 @@ export default function Home() {
                         status: "none",    // always untaken by default
                         snoozedUntil: null,
                         remainingQuantity: schedule.remaining_quantity,
+                        logId: null,
                     });
                 }
             });
@@ -215,8 +234,8 @@ export default function Home() {
     const handleCalendarView = () => {
         router.push("/(calendar_view)")
     };
-    const handleHistoryLog = () => {
-        router.push("/(pill_interactions)");
+    const handlePillInteractions = () => {
+        router.push("/pill_interactions");
     };
     const handleRefillTracker = () => {
         router.push("/refill_tracker");
@@ -290,7 +309,7 @@ export default function Home() {
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.actionButton, { backgroundColor: COLORS.complementary }]}
-                    onPress={handleHistoryLog}
+                    onPress={handlePillInteractions}
                 >
                     <View style={styles.buttonContent}>
                         <Ionicons name="document-text-outline" size={24} color="#fff" style={styles.actionIcon} />

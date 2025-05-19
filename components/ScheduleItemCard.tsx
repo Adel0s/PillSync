@@ -15,6 +15,7 @@ interface ScheduleItemProps {
     item: {
         scheduleId: number;
         scheduleTimeId: number;
+        logId: number | null;
         medication: {
             id: number;
             name: string;
@@ -51,6 +52,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
     const [snoozedUntil, setSnoozedUntil] = useState<string | null>(
         initialSnooze
     );
+    const [logId, setLogId] = useState<number | null>(item.logId);
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [notificationId, setNotificationId] = useState<string | null>(null);
 
@@ -83,19 +85,29 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             setNotificationId(null);
         }
         try {
-            const payload: Record<string, any> = {
-                schedule_id: scheduleId,
-                status: "taken",
-            };
-            if (scheduleTimeId > 0) {
-                payload.schedule_time_id = scheduleTimeId;
+            if (logId) {
+                // pill has already a status(snoozed) - update the existing log
+                await supabase
+                    .from("pill_logs")
+                    .update({ status: "taken", taken_at: new Date().toISOString() })
+                    .eq("id", logId);
+            } else {
+                // no log - insert a new one
+                const payload: any = {
+                    schedule_id: scheduleId,
+                    status: "taken",
+                };
+                if (scheduleTimeId > 0) {
+                    payload.schedule_time_id = scheduleTimeId;
+                }
+                const { data: newLog, error: logError } = await supabase
+                    .from("pill_logs")
+                    .insert([payload])
+                    .select("id")
+                    .single();
+                if (logError) throw logError;
+                setLogId(newLog.id);
             }
-            const { error: logError } = await supabase
-                .from("pill_logs")
-                .insert([
-                    payload,
-                ]);
-            if (logError) throw logError;
 
             const newRemaining = remainingQuantity - 1;
             const { error: updateError } = await supabase
@@ -129,13 +141,24 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             setNotificationId(null);
         }
         try {
-            await supabase.from("pill_logs").insert([
-                {
-                    schedule_id: scheduleId,
-                    schedule_time_id: scheduleTimeId > 0 ? scheduleTimeId : null,
-                    status: "skipped",
-                },
-            ]);
+            if (logId) {
+                await supabase
+                    .from("pill_logs")
+                    .update({ status: "skipped", taken_at: new Date().toISOString() })
+                    .eq("id", logId);
+            } else {
+                const { data: newLog, error: insErr } = await supabase
+                    .from("pill_logs")
+                    .insert([{
+                        schedule_id: scheduleId,
+                        schedule_time_id: scheduleTimeId > 0 ? scheduleTimeId : null,
+                        status: "skipped",
+                    }])
+                    .select("id")
+                    .single();
+                if (insErr) throw insErr;
+                setLogId(newLog.id);
+            }
             setStatus("skipped");
         } catch (e) {
             console.error("Skip error:", e);
@@ -147,35 +170,58 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
         const until = new Date(Date.now() + minutes * 60000).toISOString();
         const snoozeTimeInSeconds = minutes * 60;
         try {
-            await supabase.from("pill_logs").insert([
-                {
-                    schedule_id: scheduleId,
-                    schedule_time_id: scheduleTimeId > 0 ? scheduleTimeId : null,
-                    status: "snoozed",
-                    note: until,
-                },
-            ]);
+            if (logId) {
+                // 1) avem deja un log pending → îl transformăm în snoozed
+                await supabase
+                    .from("pill_logs")
+                    .update({
+                        status: "snoozed",
+                        note: until,
+                        processed: false,
+                    })
+                    .eq("id", logId);
+            } else {
+                // 2) nu există log → inserăm unul nou
+                const { data: newLog, error: insErr } = await supabase
+                    .from("pill_logs")
+                    .insert([{
+                        schedule_id: scheduleId,
+                        schedule_time_id: scheduleTimeId > 0 ? scheduleTimeId : null,
+                        status: "snoozed",
+                        note: until,
+                        processed: false,
+                    }])
+                    .select("id")
+                    .single();
+                if (insErr) throw insErr;
+                setLogId(newLog.id);
+            }
+
+            // 3) update UI
             setStatus("snoozed");
             setSnoozedUntil(until);
+
+            // 4) reprogramează notificarea
+            const atDate = new Date(until);
+            console.log("Snooze until:", atDate.toISOString());
+            console.log("Snooze seconds:", snoozeTimeInSeconds);
+            const notifId = await scheduleLocalNotificationInSeconds(
+                `⌛ Time to take ${medication.name}`,
+                "Snooze expired — please take your pill now.",
+                {},
+                snoozeTimeInSeconds
+            );
+            Notifications.addNotificationReceivedListener(() => {
+                Notifications.cancelScheduledNotificationAsync(notifId);
+            });
+            setNotificationId(notifId);
+            const all = await Notifications.getAllScheduledNotificationsAsync();
+            console.log("🔔 All scheduled notifications:", JSON.stringify(all, null, 2));
+            console.log("Scheduled snooze notification id:", notifId);
+
         } catch (e) {
             console.error("Snooze error:", e);
         }
-        const atDate = new Date(until);
-        console.log("Snooze until:", atDate.toISOString());
-        console.log("Snooze seconds:", snoozeTimeInSeconds);
-        const id = await scheduleLocalNotificationInSeconds(
-            `⌛ Time to take ${medication.name}`,
-            "Snooze expired — please take your pill now.",
-            {},
-            snoozeTimeInSeconds
-        );
-        Notifications.addNotificationReceivedListener(() => {
-            Notifications.cancelScheduledNotificationAsync(id);
-        });
-        setNotificationId(id);
-        const all = await Notifications.getAllScheduledNotificationsAsync();
-        console.log("🔔 All scheduled notifications:", JSON.stringify(all, null, 2));
-        console.log("Scheduled snooze notification id:", id);
     };
 
     const openSnoozeOptions = () => {

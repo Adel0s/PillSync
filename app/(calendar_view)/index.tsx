@@ -171,7 +171,7 @@ export default function CalendarView() {
 
     // render log
     const renderLog = ({ item }: { item: PillLog }) => {
-        //console.log("renderLog", item);
+        console.log("renderLog", item);
         const schedId = timeToSchedule[item.schedule_time_id];
         const medName = scheduleNamesById[schedId] || "-";
         //console.log(scheduleNamesById, schedId, medName);
@@ -192,7 +192,7 @@ export default function CalendarView() {
 
         // 3. Formatăm doar ora și minutul, cu zero-padding
         const actualTime =
-            item.status === "unknown"
+            item.status === "unknown" || item.status === null
                 ? "XX:XX"
                 : actualDate.toLocaleTimeString(undefined, {
                     hour: "2-digit",
