@@ -186,10 +186,7 @@ export default function MedicationScan() {
                     </CameraView>
                     <TouchableOpacity
                         style={styles.uploadButton}
-                        onPress={() => {
-                            setScanned(true);
-                            setMedication(null);
-                        }}
+                        onPress={() => router.push("/manual_add")}
                     >
                         <Text style={styles.uploadButtonText}>Manual Add</Text>
                     </TouchableOpacity>
