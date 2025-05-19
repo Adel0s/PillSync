@@ -22,26 +22,36 @@ export default function MedicationSearch() {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
 
     // I use loadsh debounce to limit the number of requests
     const fetchMedications = useCallback(
         debounce(async (text: string) => {
+            setError(false);
             if (!text) {
                 setResults([]);
                 return;
             }
             setLoading(true);
-            const { data, error } = await supabase
-                .from("medication")
-                .select("*")
-                .ilike("name", `%${text}%`) // use ilike for case insensitive search
-                .limit(10);
-            setLoading(false);
-            if (error) {
-                console.error("Search error:", error);
-                return;
+            try {
+                const { data, error } = await supabase
+                    .from("medication")
+                    .select("*")
+                    .ilike("name", `%${text}%`) // use ilike for case insensitive search
+                    .limit(10);
+                setLoading(false);
+
+                if (error) {
+                    console.error("Search error:", error);
+                    setError(true);
+                } else {
+                    setResults(data || []);
+                }
+            } catch (e) {
+                console.error("Network error:", e);
+                setLoading(false);
+                setError(true);
             }
-            setResults(data || []);
         }, 300),
         []
     );
@@ -107,11 +117,39 @@ export default function MedicationSearch() {
                         onChangeText={onChangeText}
                     />
                     {query.length > 0 && (
-                        <TouchableOpacity onPress={() => setQuery("")} style={styles.iconRight}>
-                            <Ionicons name="close-circle" size={20} color="#666" />
+                        <TouchableOpacity
+                            onPress={() => {
+                                setQuery("");
+                                setResults([]);
+                                setError(false);
+                            }}
+                            style={styles.iconRight}
+                        >
+                            <Ionicons
+                                name="close-circle"
+                                size={20}
+                                color="#666"
+                            />
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* Error state */}
+                {error && (
+                    <View style={styles.errorCard}>
+                        <Text style={styles.errorText}>
+                            Network error. Please check your connection.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.retryButton}
+                            onPress={() => fetchMedications(query)}
+                        >
+                            <Text style={styles.retryButtonText}>
+                                Try again.
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 {loading && <ActivityIndicator style={{ margin: 8 }} />}
                 <FlatList
@@ -129,14 +167,28 @@ export default function MedicationSearch() {
                             <View style={styles.textWrapper}>
                                 {renderHighlighted(item.name || "")}
                                 <Text style={styles.subText}>
-                                    {item.quantity ?? "–"} mg • {item.nr_of_pills ?? "–"} compr.
+                                    {item.quantity ?? "–"} mg •{" "}
+                                    {item.nr_of_pills ?? "–"} compr.
                                 </Text>
                             </View>
                         </TouchableOpacity>
                     )}
                     ListEmptyComponent={
-                        !loading && query ? (
-                            <Text style={styles.noResults}>No result found.</Text>
+                        !loading && !error && query ? (
+                            <View style={styles.emptyContainer}>
+                                <Ionicons
+                                    name="search-outline"
+                                    size={64}
+                                    color="#ccc"
+                                    style={{ marginBottom: 16 }}
+                                />
+                                <Text style={styles.emptyText}>
+                                    No results found…
+                                </Text>
+                                <Text style={styles.emptySubText}>
+                                    Try a different name or check your spelling.
+                                </Text>
+                            </View>
                         ) : null
                     }
                 />
@@ -213,6 +265,44 @@ const styles = StyleSheet.create({
     subText: {
         fontSize: 14,
         color: "#666",
+    },
+    emptyContainer: {
+        alignItems: "center",
+        marginTop: 40,
+    },
+    emptyText: {
+        fontSize: 18,
+        fontWeight: "600",
+        marginBottom: 8,
+        color: "#555",
+    },
+    emptySubText: {
+        fontSize: 14,
+        color: "#777",
+        textAlign: "center",
+        paddingHorizontal: 20,
+    },
+    errorCard: {
+        backgroundColor: "#f8d7da",
+        borderRadius: 8,
+        padding: 16,
+        marginVertical: 12,
+    },
+    errorText: {
+        color: "#721c24",
+        marginBottom: 8,
+        textAlign: "center",
+    },
+    retryButton: {
+        alignSelf: "center",
+        backgroundColor: "#721c24",
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 4,
+    },
+    retryButtonText: {
+        color: "#fff",
+        fontWeight: "600",
     },
     noResults: {
         textAlign: "center",
