@@ -14,6 +14,7 @@ import { supabase } from "../../lib/supabase";
 import debounce from "lodash/debounce";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
+import PillsIcon from "../../assets/images/pill_icon_64px.png";
 
 export default function MedicationSearch() {
     const router = useRouter();
@@ -62,6 +63,27 @@ export default function MedicationSearch() {
         });
     };
 
+    // Helper to render name with highlighted match
+    const renderHighlighted = (name: string) => {
+        if (!query) return <Text style={styles.itemText}>{name}</Text>;
+        // split on match, case-insensitive
+        const regex = new RegExp(`(${query.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, "i");
+        const parts = name.split(regex);
+        return (
+            <Text style={styles.itemText}>
+                {parts.map((part, idx) =>
+                    regex.test(part) ? (
+                        <Text key={idx} style={styles.highlight}>
+                            {part}
+                        </Text>
+                    ) : (
+                        <Text key={idx}>{part}</Text>
+                    )
+                )}
+            </Text>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Manual Add" backRoute="/home" />
@@ -90,11 +112,8 @@ export default function MedicationSearch() {
                     data={results}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={styles.item}
-                            onPress={() => onSelect(item)}
-                        >
-                            <Text style={styles.itemText}>{item.name}</Text>
+                        <TouchableOpacity style={styles.item} onPress={() => onSelect(item)}>
+                            {renderHighlighted(item.name || "")}
                             <Text style={styles.subText}>
                                 {item.quantity ?? "–"} mg • {item.nr_of_pills ?? "–"} compr.
                             </Text>
@@ -153,21 +172,25 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: "#000",
     },
-    input: {
-        height: 48,
-        borderColor: "#ddd",
-        borderWidth: 1,
-        borderRadius: 8,
-        paddingHorizontal: 12,
-        marginBottom: 12,
-        backgroundColor: "#f9f9f9",
-    },
     item: {
         padding: 12,
         borderBottomColor: "#eee",
         borderBottomWidth: 1,
     },
-    itemText: { fontSize: 18 },
-    subText: { fontSize: 14, color: "#666" },
-    noResults: { textAlign: "center", marginTop: 20, color: "#666" },
+    itemText: {
+        fontSize: 18,
+        color: "#000",
+    },
+    highlight: {
+        fontWeight: "bold",
+    },
+    subText: {
+        fontSize: 14,
+        color: "#666",
+    },
+    noResults: {
+        textAlign: "center",
+        marginTop: 20,
+        color: "#666",
+    },
 });
