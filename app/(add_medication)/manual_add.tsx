@@ -13,6 +13,7 @@ import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import debounce from "lodash/debounce";
 import Header from "../../components/Header";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function MedicationSearch() {
     const router = useRouter();
@@ -67,12 +68,23 @@ export default function MedicationSearch() {
 
             <View style={styles.container}>
                 <Text style={styles.title}>Search medication</Text>
-                <TextInput
-                    style={styles.input}
-                    placeholder="Type medication name..."
-                    value={query}
-                    onChangeText={onChangeText}
-                />
+
+                {/* Search input with icon and clear button */}
+                <View style={styles.searchWrapper}>
+                    <Ionicons name="search" size={20} color="#666" style={styles.iconLeft} />
+                    <TextInput
+                        style={styles.inputInner}
+                        placeholder="Type medication name..."
+                        value={query}
+                        onChangeText={onChangeText}
+                    />
+                    {query.length > 0 && (
+                        <TouchableOpacity onPress={() => setQuery("")} style={styles.iconRight}>
+                            <Ionicons name="close-circle" size={20} color="#666" />
+                        </TouchableOpacity>
+                    )}
+                </View>
+
                 {loading && <ActivityIndicator style={{ margin: 8 }} />}
                 <FlatList
                     data={results}
@@ -89,9 +101,9 @@ export default function MedicationSearch() {
                         </TouchableOpacity>
                     )}
                     ListEmptyComponent={
-                        !loading && query
-                            ? (<Text style={styles.noResults}>No result found.</Text>
-                            ) : null
+                        !loading && query ? (
+                            <Text style={styles.noResults}>No result found.</Text>
+                        ) : null
                     }
                 />
             </View>
@@ -113,6 +125,32 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: "bold",
         marginBottom: 12,
+        color: "#000",
+    },
+    searchWrapper: {
+        position: "relative",
+        marginBottom: 12,
+        height: 48,
+        borderWidth: 1,
+        borderColor: "#ddd",
+        borderRadius: 8,
+        backgroundColor: "#f9f9f9",
+        justifyContent: "center",
+    },
+    iconLeft: {
+        position: "absolute",
+        left: 12,
+        zIndex: 1,
+    },
+    iconRight: {
+        position: "absolute",
+        right: 12,
+        zIndex: 1,
+    },
+    inputInner: {
+        height: "100%",
+        paddingHorizontal: 36,
+        fontSize: 16,
         color: "#000",
     },
     input: {
