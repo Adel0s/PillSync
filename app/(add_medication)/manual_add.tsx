@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
     SafeAreaView,
     View,
@@ -6,9 +6,10 @@ import {
     TextInput,
     StyleSheet,
     FlatList,
-    TouchableOpacity,
     ActivityIndicator,
     Image,
+    Pressable,
+    Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
@@ -95,6 +96,39 @@ export default function MedicationSearch() {
         );
     };
 
+    // Animated item component
+    const AnimatedItem = ({ item, index }: { item: any; index: number }) => {
+        const fadeAnim = useRef(new Animated.Value(0)).current;
+        useEffect(() => {
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 400,
+                delay: index * 50,
+                useNativeDriver: true,
+            }).start();
+        }, []);
+
+        return (
+            <Animated.View style={{ opacity: fadeAnim }}>
+                <Pressable
+                    onPress={() => onSelect(item)}
+                    style={({ pressed }) => [
+                        styles.item,
+                        pressed && styles.itemPressed,
+                    ]}
+                >
+                    <Image source={PillsIcon} style={styles.pillIcon} />
+                    <View style={styles.textWrapper}>
+                        {renderHighlighted(item.name || "")}
+                        <Text style={styles.subText}>
+                            {item.quantity ?? "–"} mg • {item.nr_of_pills ?? "–"} compr.
+                        </Text>
+                    </View>
+                </Pressable>
+            </Animated.View>
+        );
+    };
+
     return (
         <SafeAreaView style={styles.safeContainer}>
             <Header title="Manual Add" backRoute="/home" />
@@ -117,7 +151,7 @@ export default function MedicationSearch() {
                         onChangeText={onChangeText}
                     />
                     {query.length > 0 && (
-                        <TouchableOpacity
+                        <Pressable
                             onPress={() => {
                                 setQuery("");
                                 setResults([]);
@@ -130,48 +164,33 @@ export default function MedicationSearch() {
                                 size={20}
                                 color="#666"
                             />
-                        </TouchableOpacity>
+                        </Pressable>
                     )}
                 </View>
 
-                {/* Error state */}
                 {error && (
                     <View style={styles.errorCard}>
                         <Text style={styles.errorText}>
                             Network error. Please check your connection.
                         </Text>
-                        <TouchableOpacity
+                        <Pressable
                             style={styles.retryButton}
                             onPress={() => fetchMedications(query)}
                         >
                             <Text style={styles.retryButtonText}>
                                 Try again.
                             </Text>
-                        </TouchableOpacity>
+                        </Pressable>
                     </View>
                 )}
 
                 {loading && <ActivityIndicator style={{ margin: 8 }} />}
+
                 <FlatList
                     data={results}
                     keyExtractor={(item) => item.id.toString()}
-                    renderItem={({ item }) => (
-                        <TouchableOpacity
-                            style={styles.item}
-                            onPress={() => onSelect(item)}
-                        >
-                            <Image
-                                source={PillsIcon}
-                                style={styles.pillIcon}
-                            />
-                            <View style={styles.textWrapper}>
-                                {renderHighlighted(item.name || "")}
-                                <Text style={styles.subText}>
-                                    {item.quantity ?? "–"} mg •{" "}
-                                    {item.nr_of_pills ?? "–"} compr.
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
+                    renderItem={({ item, index }) => (
+                        <AnimatedItem item={item} index={index} />
                     )}
                     ListEmptyComponent={
                         !loading && !error && query ? (
@@ -245,6 +264,11 @@ const styles = StyleSheet.create({
         padding: 12,
         borderBottomColor: "#eee",
         borderBottomWidth: 1,
+        backgroundColor: "#fff",
+    },
+    itemPressed: {
+        transform: [{ scale: 0.97 }],
+        opacity: 0.8,
     },
     pillIcon: {
         width: 24,
@@ -303,10 +327,5 @@ const styles = StyleSheet.create({
     retryButtonText: {
         color: "#fff",
         fontWeight: "600",
-    },
-    noResults: {
-        textAlign: "center",
-        marginTop: 20,
-        color: "#666",
     },
 });
