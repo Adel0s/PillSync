@@ -8,6 +8,7 @@ import {
     FlatList,
     TouchableOpacity,
     ActivityIndicator,
+    Image,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
@@ -93,7 +94,12 @@ export default function MedicationSearch() {
 
                 {/* Search input with icon and clear button */}
                 <View style={styles.searchWrapper}>
-                    <Ionicons name="search" size={20} color="#666" style={styles.iconLeft} />
+                    <Ionicons
+                        name="search"
+                        size={20}
+                        color="#666"
+                        style={styles.iconLeft}
+                    />
                     <TextInput
                         style={styles.inputInner}
                         placeholder="Type medication name..."
@@ -112,11 +118,20 @@ export default function MedicationSearch() {
                     data={results}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={({ item }) => (
-                        <TouchableOpacity style={styles.item} onPress={() => onSelect(item)}>
-                            {renderHighlighted(item.name || "")}
-                            <Text style={styles.subText}>
-                                {item.quantity ?? "–"} mg • {item.nr_of_pills ?? "–"} compr.
-                            </Text>
+                        <TouchableOpacity
+                            style={styles.item}
+                            onPress={() => onSelect(item)}
+                        >
+                            <Image
+                                source={PillsIcon}
+                                style={styles.pillIcon}
+                            />
+                            <View style={styles.textWrapper}>
+                                {renderHighlighted(item.name || "")}
+                                <Text style={styles.subText}>
+                                    {item.quantity ?? "–"} mg • {item.nr_of_pills ?? "–"} compr.
+                                </Text>
+                            </View>
                         </TouchableOpacity>
                     )}
                     ListEmptyComponent={
@@ -173,9 +188,20 @@ const styles = StyleSheet.create({
         color: "#000",
     },
     item: {
+        flexDirection: "row",
+        alignItems: "center",
         padding: 12,
         borderBottomColor: "#eee",
         borderBottomWidth: 1,
+    },
+    pillIcon: {
+        width: 24,
+        height: 24,
+        marginRight: 12,
+        resizeMode: "contain",
+    },
+    textWrapper: {
+        flex: 1,
     },
     itemText: {
         fontSize: 18,
