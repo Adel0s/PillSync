@@ -266,6 +266,33 @@ const Profile = () => {
                         <Ionicons name="settings-outline" size={20} color="#fff" style={styles.buttonIcon} />
                         <Text style={styles.buttonText}>Settings</Text>
                     </TouchableOpacity>
+                    {/* Buton Change Email */}
+                    <TouchableOpacity
+                        style={styles.commonButton}
+                        onPress={() => router.push("/(profile)/change-email")}
+                    >
+                        <Ionicons
+                            name="mail-outline"
+                            size={20}
+                            color="#fff"
+                            style={styles.buttonIcon}
+                        />
+                        <Text style={styles.buttonText}>Change Email</Text>
+                    </TouchableOpacity>
+
+                    {/* Buton Change Password */}
+                    <TouchableOpacity
+                        style={styles.commonButton}
+                        onPress={() => router.push("/(profile)/change-password")}
+                    >
+                        <Ionicons
+                            name="key-outline"
+                            size={20}
+                            color="#fff"
+                            style={styles.buttonIcon}
+                        />
+                        <Text style={styles.buttonText}>Change Password</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={styles.commonButton} onPress={handleSignOut}>
                         <Ionicons name="log-out-outline" size={20} color="#fff" style={styles.buttonIcon} />
                         <Text style={styles.buttonText}>Sign Out</Text>
