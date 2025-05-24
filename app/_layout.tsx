@@ -20,6 +20,7 @@ export default function Layout() {
         <Stack.Screen name="(profile)/index" />
         <Stack.Screen name="(profile)/change-email" />
         <Stack.Screen name="(profile)/change-password" />
+        <Stack.Screen name="(profile)/confirm-change-email" />
         <Stack.Screen name="(add_medication)/index" />
         <Stack.Screen name="(add_medication)/manual_add" />
         <Stack.Screen name="(add_medication)/schedule" />

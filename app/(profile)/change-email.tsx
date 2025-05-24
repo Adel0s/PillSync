@@ -1,4 +1,4 @@
-// app/(profile)/change-email.tsx
+import * as Linking from 'expo-linking';
 import React, { useState, useEffect } from "react";
 import {
     SafeAreaView,
@@ -30,9 +30,14 @@ export default function ChangeEmail() {
             return Alert.alert("Info", "Adresa de email este aceeași.");
         }
         setLoading(true);
-        const { error } = await supabase.auth.updateUser({ email: newEmail });
+        const confirmUrl = Linking.createURL('/confirm-change-email')
+        const { error } = await supabase.auth.updateUser(
+            { email: newEmail },
+            { emailRedirectTo: confirmUrl }
+        )
         setLoading(false);
         if (error) {
+            console.error("Error changing email:", error);
             Alert.alert("Eroare", error.message);
         } else {
             Alert.alert(
