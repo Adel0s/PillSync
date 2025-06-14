@@ -1,4 +1,3 @@
-// services/interactionService.ts
 import { supabase } from "../lib/supabase";
 import OpenAI from "openai";
 
@@ -82,7 +81,7 @@ Formatul trebuie să fie:
         raw = "";
     }
 
-    // 6) Încearcă JSON.parse și fallback
+    // If parsing fails, log the error and return an empty array
     let result: Array<{ severity: string; summary: string; details: string }>;
     try {
         result = JSON.parse(raw);
@@ -93,7 +92,7 @@ Formatul trebuie să fie:
         result = [];
     }
 
-    // 7) Salvează în cache (upsert)
+    // Save the interaction in the database (cache)
     await supabase.from("medication_interactions").upsert(
         {
             medication_a_id: a,
@@ -115,7 +114,7 @@ export async function getDrugFoodInteraction(
     const item = food.trim().toLowerCase();
     console.log(`Fetching DF interaction for: ${medId} + "${item}"`);
 
-    // 1) cache check
+    // cache check
     const { data: cache } = await supabase
         .from("medication_food_interactions")
         .select("result")
@@ -127,7 +126,7 @@ export async function getDrugFoodInteraction(
         return cache.result;
     }
 
-    // 2) fetch med name
+    // fetch med name
     const { data: medRow, error: medErr } = await supabase
         .from("medication")
         .select("name")

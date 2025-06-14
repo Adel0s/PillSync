@@ -32,13 +32,13 @@ export async function fetchCalendarData(
     year: number,
     month: number
 ): Promise<CalendarData> {
-    // 1) Intervalul lunii în UTC
+    // Month interval in UTC
     const startDateObj = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
     const endDateObj = new Date(Date.UTC(year, month, 0, 23, 59, 59));
     const startISO = startDateObj.toISOString();
     const endISO = endDateObj.toISOString();
 
-    // 2) Programe active ale utilizatorului
+    // Active schedules for the user
     const { data: schedulesData, error: schErr } = await supabase
         .from("medication_schedule")
         .select("id")
@@ -57,7 +57,7 @@ export async function fetchCalendarData(
         };
     }
 
-    // 3) Ore planificate + date de start/durată
+    // Planned times for the schedules + their start date and duration
     const { data: timesData, error: tErr } = await supabase
         .from("medication_schedule_times")
         .select("id, schedule_id, time, medication_schedule(start_date, duration_days)")
@@ -73,7 +73,7 @@ export async function fetchCalendarData(
     });
     const scheduleTimeIds = timesList.map(t => t.id);
 
-    // 4) Pill-logs pentru luna
+    // 4) Pill-logs for month
     const { data: logsData, error: lErr } = await supabase
         .from("pill_logs")
         .select("id, schedule_id, schedule_time_id, taken_at, status, note")
@@ -84,7 +84,7 @@ export async function fetchCalendarData(
     if (lErr) throw lErr;
     const logsList: PillLog[] = logsData ?? [];
 
-    // 5) Grupare log-uri pe zile
+    // 5) Group logs by day
     const logsByDay: Record<string, PillLog[]> = {};
     logsList.forEach(l => {
         const day = l.taken_at.substr(0, 10);
@@ -92,7 +92,7 @@ export async function fetchCalendarData(
         logsByDay[day].push(l);
     });
 
-    // 6) Calculează câte doze planificate are fiecare zi
+    // 6) Create an object to hold the planned doses for each day
     const dailyPlanned: Record<string, number> = {};
     for (let d = new Date(startDateObj); d <= endDateObj; d.setDate(d.getDate() + 1)) {
         dailyPlanned[d.toISOString().substr(0, 10)] = 0;
@@ -113,7 +113,7 @@ export async function fetchCalendarData(
         }
     });
 
-    // 7) Construiește statsByDay pe baza lui dailyPlanned
+    // 7) Create an object to hold stats for each day based on dailyPlanned and logsByDay
     const statsByDay: Record<string, DayStats> = {};
     Object.entries(dailyPlanned).forEach(([day, planned]) => {
         const logs = logsByDay[day] || [];
@@ -148,7 +148,7 @@ export async function fetchCalendarData(
         }
     });
 
-    // 8) Preia numele medicamentelor
+    // Get medication names for the schedules used in logs
     const usedScheduleIds = Array.from(new Set(timesList.map((t: any) => t.schedule_id)));
     const { data: medsData, error: mErr } = await supabase
         .from("medication_schedule")
@@ -182,7 +182,7 @@ export async function fetchYearlyCalendarData(
     startISO: string, // ex. '2024-05-01T00:00:00Z'
     endISO: string    // ex. '2025-04-30T23:59:59Z'
 ): Promise<YearlyStats> {
-    // a) schedule-uri active
+    // active schedules
     const { data: sch, error: schErr } = await supabase
         .from("medication_schedule")
         .select("id")
@@ -192,7 +192,7 @@ export async function fetchYearlyCalendarData(
     const scheduleIds = (sch ?? []).map((s: any) => s.id);
     if (scheduleIds.length === 0) return {};
 
-    // b) ore planificate
+    // planned times for the schedules
     const { data: times } = await supabase
         .from("medication_schedule_times")
         .select("id")
@@ -200,7 +200,7 @@ export async function fetchYearlyCalendarData(
     const scheduleTimeIds = (times ?? []).map((t: any) => t.id);
     const totalPerDay = scheduleTimeIds.length;
 
-    // c) pill_logs pe interval
+    // pill_logs for the schedules in the given time range
     const { data: logs, error: lErr } = await supabase
         .from("pill_logs")
         .select("schedule_time_id, status, taken_at")
@@ -209,7 +209,7 @@ export async function fetchYearlyCalendarData(
         .lte("taken_at", endISO);
     if (lErr) throw lErr;
 
-    // d) grupare pe zile
+    // grouped logs by day
     const grouped: Record<string, any[]> = {};
     (logs ?? []).forEach((l: any) => {
         const day = l.taken_at.substr(0, 10);
@@ -217,7 +217,7 @@ export async function fetchYearlyCalendarData(
         grouped[day].push(l);
     });
 
-    // e) calc stats pentru fiecare zi
+    // calculate stats for each day in the range
     const stats: YearlyStats = {};
     const start = new Date(startISO), end = new Date(endISO);
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
