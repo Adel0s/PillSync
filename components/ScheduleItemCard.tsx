@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 import MedicationDetailsModal from "./MedicationDetailsModal";
-import { cancelLocalNotification, scheduleLocalNotificationInSeconds } from "../services/notificationService";
+import { cancelLocalNotification, scheduleLocalNotificationInSeconds, scheduleLowInventoryNotification } from "../services/notificationService";
 import * as Notifications from "expo-notifications";
 
 interface ScheduleItemProps {
@@ -32,6 +32,8 @@ interface ScheduleItemProps {
         status: "none" | "taken" | "skipped" | "snoozed";
         snoozedUntil: string | null;
         remainingQuantity: number;
+        reminder_enabled: boolean;
+        reminder_threshold: number;
     };
     onPillTaken: () => void;
 }
@@ -46,6 +48,8 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
         status: initialStatus,
         snoozedUntil: initialSnooze,
         remainingQuantity,
+        reminder_enabled,
+        reminder_threshold,
     } = item;
 
     const [status, setStatus] = useState(initialStatus);
@@ -115,7 +119,12 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
                 .update({ remaining_quantity: newRemaining })
                 .eq("id", scheduleId);
             if (updateError) throw updateError;
-            else console.log(scheduleId, "updated successfully");
+            else {
+                console.log(scheduleId, "updated successfully");
+                if (reminder_enabled && newRemaining === reminder_threshold) {
+                    await scheduleLowInventoryNotification(medication.name, newRemaining);
+                }
+            }
 
             setStatus("taken");
             if (medication?.side_effect) {
@@ -171,7 +180,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
         const snoozeTimeInSeconds = minutes * 60;
         try {
             if (logId) {
-                // 1) avem deja un log pending → îl transformăm în snoozed
+                // 1) already have a log pending → update it to snoozed
                 await supabase
                     .from("pill_logs")
                     .update({
@@ -181,7 +190,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
                     })
                     .eq("id", logId);
             } else {
-                // 2) nu există log → inserăm unul nou
+                // 2) no log exists → insert a new one
                 const { data: newLog, error: insErr } = await supabase
                     .from("pill_logs")
                     .insert([{
@@ -201,7 +210,7 @@ const ScheduleItemCard = ({ item, onPillTaken }: ScheduleItemProps) => {
             setStatus("snoozed");
             setSnoozedUntil(until);
 
-            // 4) reprogramează notificarea
+            // 4) reprogram the snooze notification
             const atDate = new Date(until);
             console.log("Snooze until:", atDate.toISOString());
             console.log("Snooze seconds:", snoozeTimeInSeconds);

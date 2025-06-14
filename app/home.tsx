@@ -66,6 +66,8 @@ export default function Home() {
           dosage,
           instructions,
           remaining_quantity,
+          reminder_enabled,
+          reminder_threshold,
           medication:medication_id (
             id,
             name,
@@ -146,7 +148,7 @@ export default function Home() {
             const endOfDay = new Date(startOfDay);
             endOfDay.setDate(endOfDay.getDate() + 1);
 
-            // 4) Pentru fiecare oră, ia ultimul log (dacă există)
+            // 4) For each schedule, fetch the latest pill_logs for each time
             type Item = {
                 scheduleId: number;
                 scheduleTimeId: number;
@@ -157,6 +159,8 @@ export default function Home() {
                 snoozedUntil: string | null;
                 remainingQuantity: number;
                 logId: number | null;
+                reminder_enabled: boolean;
+                reminder_threshold: number;
             };
 
             const items: Promise<Item>[] = filtered.flatMap(schedule =>
@@ -182,13 +186,14 @@ export default function Home() {
                         snoozedUntil: log?.status === "snoozed" ? log.note : null,
                         remainingQuantity: schedule.remaining_quantity,
                         logId: log?.id ?? null,
+                        reminder_enabled: schedule.reminder_enabled,
+                        reminder_threshold: schedule.reminder_threshold,
                     };
                 })
             );
 
             const results = await Promise.all(items);
             // 5) Add a schedule with no times set -> 'As Needed'
-            //    (this is a bit of a hack, but it works for now)
             filtered.forEach(schedule => {
                 if (schedule.medication_schedule_times.length === 0) {
                     results.push({
@@ -202,6 +207,8 @@ export default function Home() {
                         snoozedUntil: null,
                         remainingQuantity: schedule.remaining_quantity,
                         logId: null,
+                        reminder_enabled: schedule.reminder_enabled,
+                        reminder_threshold: schedule.reminder_threshold,
                     });
                 }
             });

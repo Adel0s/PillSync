@@ -4,6 +4,10 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 const { SchedulableTriggerInputTypes } = Notifications;
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import dayjs from 'dayjs';
+
+const STORAGE_KEY = '@scheduled_notifications';
 
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
@@ -71,6 +75,17 @@ export async function scheduleLocalNotificationInSeconds(
     return id;
 }
 
+export async function scheduleLowInventoryNotification(medName: string, remaining: number) {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: 'Low Inventory',
+            body: `You have only ${remaining} pill(s) left of ${medName}. It's time for a refill!`,
+            sound: true,
+        },
+        trigger: null, // trigger immediately
+    });
+}
+
 export async function scheduleLocalNotificationAtDate(
     title: string,
     body: string,
@@ -91,6 +106,96 @@ export async function scheduleLocalNotificationAtDate(
             repeats: false
         }
     });
+}
+
+// 2) Şterge toate notificările programate anterior
+export async function cancelAllNotifications() {
+    const stored = await AsyncStorage.getItem(STORAGE_KEY);
+    if (stored) {
+        const ids: string[] = JSON.parse(stored);
+        await Promise.all(
+            ids.map(id => Notifications.cancelScheduledNotificationAsync(id))
+        );
+        await AsyncStorage.removeItem(STORAGE_KEY);
+    }
+}
+
+// 3) Programează toate reminderele active din Supabase
+export async function scheduleAllReminders(userId: string) {
+    console.log('Scheduling all reminders...');
+    await cancelAllNotifications();
+
+    const nowISO = dayjs().toISOString();
+    const { data: schedules, error } = await supabase
+        .from('medication_schedule')
+        .select(`
+      id,
+      start_date,
+      duration_days,
+      remaining_quantity,
+      pill_reminders_enabled,
+      medication:medication_id(name)
+    `)
+        .eq('patient_id', userId)
+        .eq('pill_reminders_enabled', true)
+        .gt('remaining_quantity', 0)
+        .lte('start_date', nowISO);
+
+    if (error || !schedules) {
+        console.error('Eroare la fetch schedules:', error);
+        return;
+    }
+
+    // 2) filtrare în JS după data de final: start_date + duration_days > now
+    const active = schedules.filter(s => {
+        const start = dayjs(s.start_date);
+        const end = start.add(s.duration_days, 'day');
+        return dayjs().isBefore(end);
+    });
+    console.log('Fetched schedules for user', userId, active);
+
+    const storedIds: string[] = [];
+
+    for (const sched of active) {
+        const { data: times, error: err2 } = await supabase
+            .from('medication_schedule_times')
+            .select('time, notification_offset')
+            .eq('schedule_id', sched.id);
+
+        if (err2 || !times) {
+            console.error(`Eroare la fetch times pentru schedule ${sched.id}`, err2);
+            continue;
+        }
+
+        const medData = sched.medication as { name: string } | { name: string }[];
+        const medName = Array.isArray(medData) ? medData[0].name : medData.name;
+        const start = dayjs(sched.start_date);
+        for (let d = 0; d < sched.duration_days; d++) {
+            const dayDate = start.add(d, 'day');
+            if (dayDate.isBefore(dayjs(), 'day')) continue; // skip past datesr
+            for (const t of times) {
+                const [hh, mm] = t.time.split(':').map(Number);
+                const doseTime = dayDate.hour(hh).minute(mm).second(0);
+                const notifTime = doseTime.subtract(t.notification_offset, 'minute');
+
+                if (notifTime.isAfter(dayjs())) {
+                    console.log(`Scheduling notification for ${medName} at ${notifTime.format('YYYY-MM-DD HH:mm:ss')}`);
+                    const notifId = await Notifications.scheduleNotificationAsync({
+                        content: {
+                            title: `Time to take ${medName}`,
+                            body: `Take your pill at ${doseTime.format('HH:mm')}`,
+                            data: { scheduleId: sched.id },
+                        },
+                        trigger: { type: SchedulableTriggerInputTypes.DATE, date: notifTime.toDate() },
+                    });
+                    storedIds.push(notifId);
+                }
+            }
+        }
+    }
+    const all = await Notifications.getAllScheduledNotificationsAsync();
+    console.log("🔔 All scheduled notifications:", JSON.stringify(all, null, 2));
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(storedIds));
 }
 
 export async function cancelLocalNotification(id: string) {
