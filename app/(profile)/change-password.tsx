@@ -24,10 +24,10 @@ export default function ChangePassword() {
 
     const handleChangePassword = async () => {
         if (password.length < 6) {
-            return Alert.alert("Eroare", "Parola trebuie să aibă cel puțin 6 caractere.");
+            return Alert.alert("Error", "Password must have at least 6 characters.");
         }
         if (password !== confirm) {
-            return Alert.alert("Eroare", "Parolele nu coincid.");
+            return Alert.alert("Error", "Passwords do not match.");
         }
         setLoading(true);
         const { error } = await supabase.auth.updateUser({ password });
@@ -35,7 +35,7 @@ export default function ChangePassword() {
         if (error) {
             Alert.alert("Eroare", error.message);
         } else {
-            Alert.alert("Succes", "Parola a fost schimbată cu succes.");
+            Alert.alert("Success", "Password has been changed successfully.");
             router.back();
         }
     };
