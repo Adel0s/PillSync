@@ -10,13 +10,14 @@ interface ReportData {
 export async function exportCalendarReport(data: ReportData) {
   const { monthTitle, statsByDay } = data;
 
-  // — Prepare ordered days and percentages for sparkline chart —
+  // Prepare ordered days and percentages for sparkline chart
   const orderedDays = Object.keys(statsByDay).sort();
   const pctData = orderedDays.map(day => {
     const { taken, totalPlanned } = statsByDay[day];
     return totalPlanned > 0 ? Math.round((taken / totalPlanned) * 100) : 0;
   });
 
+  // Chart.js config
   const chartConfig = {
     type: "line",
     data: {
@@ -56,14 +57,10 @@ export async function exportCalendarReport(data: ReportData) {
           display: true,
           suggestedMin: 0,
           suggestedMax: 100,
-          ticks: {
-            stepSize: 20
-          }
+          ticks: { stepSize: 20 }
         }
       },
-      layout: {
-        padding: 8
-      },
+      layout: { padding: 8 },
       responsive: true
     }
   };
@@ -71,9 +68,9 @@ export async function exportCalendarReport(data: ReportData) {
   const chartUrl =
     "https://quickchart.io/chart?c=" +
     encodeURIComponent(JSON.stringify(chartConfig)) +
-    "&width=600&height=150";
+    "&width=600&height=300";
 
-  // — Calculate summary metrics exactly like in CalendarView —
+  // Calculate summary metrics exactly like in CalendarView
   const allStats = Object.values(statsByDay);
   const ratios = allStats.map(s => s.taken / (s.totalPlanned || 1));
   const avgCur = ratios.length
@@ -97,7 +94,7 @@ export async function exportCalendarReport(data: ReportData) {
       ? Math.round((daysCovered / daysWithPlan) * 100)
       : 0;
 
-  // — Build table rows only for days with >0 planned doses —
+  // Build table rows only for days with >0 planned doses
   const rows = Object.entries(statsByDay)
     .filter(([_, { totalPlanned }]) => totalPlanned > 0)
     .map(([day, { taken, totalPlanned }]) => {
@@ -110,21 +107,19 @@ export async function exportCalendarReport(data: ReportData) {
     })
     .join("");
 
-  // — Compose final HTML with summary block, table, and sparkline chart on a new page —
+  // Compose final HTML with summary block, table, and sparkline chart on a new page
   const html = `
     <html>
       <head>
         <meta charset="utf-8"/>
         <title>Calendar Report</title>
         <style>
-          /* ensure page breaks for PDF */
           .page-break { page-break-before: always; }
         </style>
       </head>
       <body style="font-family: sans-serif; padding: 16px;">
         <h1 style="text-align:center; margin-bottom: 24px;">${monthTitle}</h1>
 
-        <!-- Summary block -->
         <div style="margin-bottom: 24px; border: 1px solid #ccc; padding: 12px; border-radius: 4px;">
           <p><strong>Treatment Days:</strong> ${daysWithPlan}</p>
           <p><strong>Average Adherence:</strong> ${mediaAderare}%</p>
@@ -132,7 +127,6 @@ export async function exportCalendarReport(data: ReportData) {
           <p><strong>PDC:</strong> ${pdcTotal}%</p>
         </div>
 
-        <!-- Detailed table -->
         <table style="width:100%; border-collapse: collapse;">
           <thead>
             <tr>
@@ -146,13 +140,12 @@ export async function exportCalendarReport(data: ReportData) {
           </tbody>
         </table>
 
-        <!-- Force new page for trend chart -->
         <div class="page-break"></div>
 
-        <!-- Sparkline chart page -->
         <h2 style="text-align:center; margin-bottom: 16px;">Daily Progress Trend</h2>
-        <img src="${chartUrl}" style="width:100%; height:auto;"/>
-
+        <div style="width:100%; height:300px;">
+          <img src="${chartUrl}" style="width:100%; height:100%;"/>
+        </div>
       </body>
     </html>
   `;
