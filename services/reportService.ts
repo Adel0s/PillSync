@@ -1,6 +1,9 @@
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import { DayStats } from "./calendarService";
+import logo from "@/assets/images/logo.png";
+import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system";
 
 interface ReportData {
   monthTitle: string;
@@ -9,6 +12,11 @@ interface ReportData {
 
 export async function exportCalendarReport(data: ReportData) {
   const { monthTitle, statsByDay } = data;
+
+  const asset = await Asset.fromModule(logo as number).downloadAsync();
+  const fileUri = asset.localUri ?? asset.uri;
+  const base64 = await FileSystem.readAsStringAsync(fileUri, { encoding: FileSystem.EncodingType.Base64 });
+  const logoData = `data:image/png;base64,${base64}`;
 
   // Prepare ordered days and percentages for sparkline chart
   const orderedDays = Object.keys(statsByDay).sort();
@@ -114,41 +122,76 @@ export async function exportCalendarReport(data: ReportData) {
         <meta charset="utf-8"/>
         <title>Calendar Report</title>
         <style>
+          @page {
+            margin: 0px 20px 60px 20px;
+            @bottom-center {
+              content: "Page " counter(page) " of " counter(pages);
+              font-size: 12px;
+              color: #666;
+            }
+          }
           .page-break { page-break-before: always; }
+          /* smaller header */
+          .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 4px 20px;
+            border-bottom: 1px solid #ccc;
+          }
+          .header img {
+            height: 64px;
+          }
+          .header h2 {
+            margin: 0;
+            font-size: 16px;
+          }
         </style>
       </head>
-      <body style="font-family: sans-serif; padding: 16px;">
-        <h1 style="text-align:center; margin-bottom: 24px;">${monthTitle}</h1>
+      <body style="font-family: sans-serif; padding: 0; margin: 0;">
 
-        <div style="margin-bottom: 24px; border: 1px solid #ccc; padding: 12px; border-radius: 4px;">
-          <p><strong>Treatment Days:</strong> ${daysWithPlan}</p>
-          <p><strong>Average Adherence:</strong> ${mediaAderare}%</p>
-          <p><strong>MPR:</strong> ${mprTotal}%</p>
-          <p><strong>PDC:</strong> ${pdcTotal}%</p>
+        <!-- Inline header -->
+        <div class="header">
+          <img src="${logoData}" alt="Clinic Logo"/>
+          <h2>Pill Sync Reminder App</h2>
         </div>
 
-        <table style="width:100%; border-collapse: collapse;">
-          <thead>
-            <tr>
-              <th style="border-bottom: 1px solid #333; padding:8px; text-align:left;">Date</th>
-              <th style="border-bottom: 1px solid #333; padding:8px; text-align:center;">Doses/Taken</th>
-              <th style="border-bottom: 1px solid #333; padding:8px; text-align:center;">Progress</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rows}
-          </tbody>
-        </table>
+        <!-- Page 1 content -->
+        <div style="padding: 20px;">
+          <h1 style="text-align:center; margin-bottom:24px;">${monthTitle}</h1>
+          <div style="margin-bottom:24px; border:1px solid #ccc; padding:12px; border-radius:4px;">
+            <p><strong>Treatment Days:</strong> ${daysWithPlan}</p>
+            <p><strong>Average Adherence:</strong> ${mediaAderare}%</p>
+            <p><strong>MPR:</strong> ${mprTotal}%</p>
+            <p><strong>PDC:</strong> ${pdcTotal}%</p>
+          </div>
+          <table style="width:100%; border-collapse: collapse;">
+            <thead>
+              <tr>
+                <th style="border-bottom:1px solid #333; padding:8px; text-align:left;">Date</th>
+                <th style="border-bottom:1px solid #333; padding:8px; text-align:center;">Doses/Taken</th>
+                <th style="border-bottom:1px solid #333; padding:8px; text-align:center;">Progress</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
 
+        <!-- Page break -->
         <div class="page-break"></div>
 
-        <h2 style="text-align:center; margin-bottom: 16px;">Daily Progress Trend</h2>
-        <div style="width:100%; height:300px;">
-          <img src="${chartUrl}" style="width:100%; height:100%;"/>
+        <!-- Page 2: chart -->
+        <div style="padding: 20px;">
+          <h2 style="text-align:center; margin-bottom:16px;">Daily Progress Trend</h2>
+          <div style="width:100%; height:300px;">
+            <img src="${chartUrl}" style="width:100%; height:100%;"/>
+          </div>
         </div>
+
       </body>
     </html>
   `;
+
 
   // 2) Generate PDF
   const { uri } = await Print.printToFileAsync({ html, base64: false });
