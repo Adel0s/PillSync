@@ -422,17 +422,17 @@ export default function CalendarView() {
                                     <View style={styles.tooltipBox}>
                                         <Text style={styles.tooltipTitle}>
                                             {infoMetric === "adherence"
-                                                ? "Aderare zilnică"
+                                                ? "Average daily adherence percentage"
                                                 : infoMetric === "mpr"
                                                     ? "Medication Possession Ratio"
                                                     : "Proportion of Days Covered"}
                                         </Text>
                                         <Text>
                                             {infoMetric === "adherence"
-                                                ? "Procentul mediu zilnic de administrare: media zilnică a dozelor luate raportată la dozele planificate."
+                                                ? "The daily average of taken doses compared to the planned doses."
                                                 : infoMetric === "mpr"
-                                                    ? "Total doze administrate / total doze planificate × 100."
-                                                    : "Zile cu toate dozele luate / zile cu doze planificate × 100."}
+                                                    ? "Total doses taken / total doses planned × 100."
+                                                    : "Days with all doses taken / days with planned doses × 100."}
                                         </Text>
                                         <TouchableOpacity
                                             style={{ marginTop: 12, alignSelf: "flex-end" }}
