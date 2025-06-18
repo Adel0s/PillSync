@@ -39,24 +39,23 @@ export default function CalendarView() {
     const [currentAdherence, setCurrentAdherence] = useState(0);
     const [prevAdherence, setPrevAdherence] = useState(0);
 
-    // **noi metrici**
     const [monthlyMPR, setMonthlyMPR] = useState(0);
     const [monthlyPDC, setMonthlyPDC] = useState(0);
 
-    // **tooltip pentru metrici**
+    // metric to show in info modal
     const [infoMetric, setInfoMetric] = useState<"adherence" | "mpr" | "pdc" | null>(null);
 
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
-    // pentru comparație cu azi
+    //For today comparison
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(
         today.getDate()
     ).padStart(2, "0")}`;
 
-    // 1) Încarcă user
+    // 1) Load userId on mount
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
             if (data.user) setUserId(data.user.id);
@@ -345,20 +344,49 @@ export default function CalendarView() {
                                     ]}
                                 >
                                     {currentAdherence - prevAdherence >= 0 ? "↑" : "↓"}{" "}
-                                    {Math.abs(currentAdherence - prevAdherence)}% față de luna trecută
+                                    {Math.abs(currentAdherence - prevAdherence)}% compared to last month
                                 </Text>
                             </View>
-                            <Text style={styles.adherenceText}>Procent aderare: {currentAdherence}%</Text>
+
+                            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
+                                <Text style={styles.adherenceText}>
+                                    Adherence rate: {currentAdherence}%
+                                </Text>
+                                <TouchableOpacity onPress={() => setInfoMetric("adherence")}>
+                                    <Ionicons
+                                        name="information-circle-outline"
+                                        size={18}
+                                        color="#666"
+                                        style={{ marginLeft: 4 }}
+                                    />
+                                </TouchableOpacity>
+                            </View>
+
                             <View style={styles.metricsRow}>
-                                <Text style={styles.metricText}>
-                                    MPR: {monthlyMPR}%{" "}
-                                    <TouchableOpacity onPress={() => setInfoMetric("mpr")} />
-                                </Text>
-                                <Text style={styles.metricText}>
-                                    PDC: {monthlyPDC}%{" "}
-                                    <TouchableOpacity onPress={() => setInfoMetric("pdc")} />
-                                </Text>
+                                <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 2 }}>
+                                    <Text style={styles.metricText}>MPR: {monthlyMPR}%</Text>
+                                    <TouchableOpacity onPress={() => setInfoMetric("mpr")}>
+                                        <Ionicons
+                                            name="information-circle-outline"
+                                            size={18}
+                                            color="#666"
+                                            style={{ marginLeft: 4 }}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={{ flexDirection: "row", alignItems: "center", marginVertical: 2 }}>
+                                    <Text style={styles.metricText}>PDC: {monthlyPDC}%</Text>
+                                    <TouchableOpacity onPress={() => setInfoMetric("pdc")}>
+                                        <Ionicons
+                                            name="information-circle-outline"
+                                            size={18}
+                                            color="#666"
+                                            style={{ marginLeft: 4 }}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
                             </View>
+
                             <View style={styles.legendContainer}>
                                 {[
                                     { col: "#4CAF50", txt: "100%" },
@@ -371,6 +399,7 @@ export default function CalendarView() {
                                     </View>
                                 ))}
                             </View>
+
                             <TouchableOpacity
                                 style={styles.reportButton}
                                 onPress={() =>
@@ -386,7 +415,36 @@ export default function CalendarView() {
                                 <Text style={styles.reportButtonText}>Export to PDF</Text>
                             </TouchableOpacity>
                         </View>
-                        {/* Details modal */}
+
+                        {infoMetric && (
+                            <Modal transparent animationType="fade" onRequestClose={() => setInfoMetric(null)}>
+                                <View style={styles.tooltipOverlay}>
+                                    <View style={styles.tooltipBox}>
+                                        <Text style={styles.tooltipTitle}>
+                                            {infoMetric === "adherence"
+                                                ? "Aderare zilnică"
+                                                : infoMetric === "mpr"
+                                                    ? "Medication Possession Ratio"
+                                                    : "Proportion of Days Covered"}
+                                        </Text>
+                                        <Text>
+                                            {infoMetric === "adherence"
+                                                ? "Procentul mediu zilnic de administrare: media zilnică a dozelor luate raportată la dozele planificate."
+                                                : infoMetric === "mpr"
+                                                    ? "Total doze administrate / total doze planificate × 100."
+                                                    : "Zile cu toate dozele luate / zile cu doze planificate × 100."}
+                                        </Text>
+                                        <TouchableOpacity
+                                            style={{ marginTop: 12, alignSelf: "flex-end" }}
+                                            onPress={() => setInfoMetric(null)}
+                                        >
+                                            <Text style={styles.tooltipCloseText}>Close</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+                            </Modal>
+                        )}
+
                         {modalVisible && <ModalContent />}
                     </>
                 )}
@@ -415,7 +473,7 @@ const styles = StyleSheet.create({
     up: { color: "#20A0D8" },
     down: { color: "#FF3B30" },
 
-    adherenceText: { fontSize: 16, fontWeight: "600", marginBottom: 12 },
+    adherenceText: { fontSize: 16, fontWeight: "600" },
     metricsRow: {
         alignItems: "flex-start",
         marginBottom: 12,
@@ -423,7 +481,6 @@ const styles = StyleSheet.create({
     metricText: {
         fontSize: 14,
         color: "#333",
-        marginVertical: 2,
     },
     legendContainer: { flexDirection: "row", marginBottom: 12 },
     legendItem: { flexDirection: "row", alignItems: "center", marginHorizontal: 8 },
@@ -459,10 +516,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: "bold",
         marginBottom: 8,
-    },
-    tooltipClose: {
-        marginTop: 12,
-        alignSelf: "flex-end",
     },
     tooltipCloseText: {
         color: "#20A0D8",
