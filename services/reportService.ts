@@ -10,17 +10,77 @@ interface ReportData {
 export async function exportCalendarReport(data: ReportData) {
   const { monthTitle, statsByDay } = data;
 
+  // — Prepare ordered days and percentages for sparkline chart —
+  const orderedDays = Object.keys(statsByDay).sort();
+  const pctData = orderedDays.map(day => {
+    const { taken, totalPlanned } = statsByDay[day];
+    return totalPlanned > 0 ? Math.round((taken / totalPlanned) * 100) : 0;
+  });
+
+  const chartConfig = {
+    type: "line",
+    data: {
+      labels: orderedDays,
+      datasets: [{
+        label: "Progress (%)",
+        data: pctData,
+        fill: false,
+        borderColor: "#20A0D8",
+        tension: 0.4,
+        pointRadius: 0
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: "top"
+        },
+        title: {
+          display: true,
+          text: "Daily Adherence Trend"
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          ticks: {
+            autoSkip: true,
+            maxTicksLimit: 10,
+            maxRotation: 45,
+            minRotation: 45
+          }
+        },
+        y: {
+          display: true,
+          suggestedMin: 0,
+          suggestedMax: 100,
+          ticks: {
+            stepSize: 20
+          }
+        }
+      },
+      layout: {
+        padding: 8
+      },
+      responsive: true
+    }
+  };
+
+  const chartUrl =
+    "https://quickchart.io/chart?c=" +
+    encodeURIComponent(JSON.stringify(chartConfig)) +
+    "&width=600&height=150";
+
   // — Calculate summary metrics exactly like in CalendarView —
   const allStats = Object.values(statsByDay);
-
-  // Daily medication adherence (include days with 0 planned doses via (totalPlanned || 1))
   const ratios = allStats.map(s => s.taken / (s.totalPlanned || 1));
   const avgCur = ratios.length
     ? ratios.reduce((sum, r) => sum + r, 0) / ratios.length
     : 0;
   const mediaAderare = Math.round(avgCur * 100);
 
-  // MPR = totalTaken / totalPlanned × 100
   const totalPlannedSum = allStats.reduce((sum, s) => sum + s.totalPlanned, 0);
   const totalTakenSum = allStats.reduce((sum, s) => sum + s.taken, 0);
   const mprTotal =
@@ -28,7 +88,6 @@ export async function exportCalendarReport(data: ReportData) {
       ? Math.round((totalTakenSum / totalPlannedSum) * 100)
       : 0;
 
-  // PDC = days with 100% taken / days with any planned × 100
   const daysWithPlan = allStats.filter(s => s.totalPlanned > 0).length;
   const daysCovered = allStats.filter(
     s => s.totalPlanned > 0 && s.taken >= s.totalPlanned
@@ -51,12 +110,16 @@ export async function exportCalendarReport(data: ReportData) {
     })
     .join("");
 
-  // — Compose final HTML with summary block —
+  // — Compose final HTML with summary block, table, and sparkline chart on a new page —
   const html = `
     <html>
       <head>
         <meta charset="utf-8"/>
         <title>Calendar Report</title>
+        <style>
+          /* ensure page breaks for PDF */
+          .page-break { page-break-before: always; }
+        </style>
       </head>
       <body style="font-family: sans-serif; padding: 16px;">
         <h1 style="text-align:center; margin-bottom: 24px;">${monthTitle}</h1>
@@ -64,7 +127,7 @@ export async function exportCalendarReport(data: ReportData) {
         <!-- Summary block -->
         <div style="margin-bottom: 24px; border: 1px solid #ccc; padding: 12px; border-radius: 4px;">
           <p><strong>Treatment Days:</strong> ${daysWithPlan}</p>
-          <p><strong>Average Daily Adherence Percentage:</strong> ${mediaAderare}%</p>
+          <p><strong>Average Adherence:</strong> ${mediaAderare}%</p>
           <p><strong>MPR:</strong> ${mprTotal}%</p>
           <p><strong>PDC:</strong> ${pdcTotal}%</p>
         </div>
@@ -74,7 +137,7 @@ export async function exportCalendarReport(data: ReportData) {
           <thead>
             <tr>
               <th style="border-bottom: 1px solid #333; padding:8px; text-align:left;">Date</th>
-              <th style="border-bottom: 1px solid #333; padding:8px; text-align:center;">Total Doses/Taken</th>
+              <th style="border-bottom: 1px solid #333; padding:8px; text-align:center;">Doses/Taken</th>
               <th style="border-bottom: 1px solid #333; padding:8px; text-align:center;">Progress</th>
             </tr>
           </thead>
@@ -82,6 +145,14 @@ export async function exportCalendarReport(data: ReportData) {
             ${rows}
           </tbody>
         </table>
+
+        <!-- Force new page for trend chart -->
+        <div class="page-break"></div>
+
+        <!-- Sparkline chart page -->
+        <h2 style="text-align:center; margin-bottom: 16px;">Daily Progress Trend</h2>
+        <img src="${chartUrl}" style="width:100%; height:auto;"/>
+
       </body>
     </html>
   `;
