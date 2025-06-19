@@ -16,7 +16,6 @@ import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import logo from "../assets/images/logo.png";
 
-// import refactored styles + theme
 import styles from "./Login.styles";
 import { COLORS } from "../styles/colors";
 
@@ -41,6 +40,7 @@ const Login = () => {
 
     const handleForgotPassword = async () => {
         const resetPasswordURL = Linking.createURL("/reset_password");
+        console.log("Reset Password URL:", resetPasswordURL);
         if (!email) {
             Alert.alert("Forgot Password", "Please enter your email address to reset your password.");
             return;
@@ -53,6 +53,7 @@ const Login = () => {
             Alert.alert("Error", error.message);
         } else {
             Alert.alert("Success", "Check your email for password reset instructions.");
+            console.log("Password reset email sent to:", email, "with redirect to:", resetPasswordURL);
         }
         setLoading(false);
     };

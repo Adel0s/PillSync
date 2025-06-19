@@ -292,7 +292,7 @@ export default function MedicationScan() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Quantity for active substance(numeric)"
+                        placeholder="Quantity for active substance"
                         placeholderTextColor="#999"
                         value={quantity}
                         onChangeText={setQuantity}
@@ -300,7 +300,7 @@ export default function MedicationScan() {
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder="Number of pills (numeric)"
+                        placeholder="Number of pills"
                         placeholderTextColor="#999"
                         value={nrOfPills}
                         onChangeText={setNrOfPills}
