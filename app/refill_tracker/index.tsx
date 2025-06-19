@@ -10,6 +10,7 @@ import {
     Image,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useIsFocused } from "@react-navigation/native";
 import { supabase } from "../../lib/supabase";
 import Header from "../../components/Header";
 import PillsIcon from "../../assets/images/pill_icon_64px.png";
@@ -58,10 +59,13 @@ const RefillTracker: React.FC = () => {
     const [schedules, setSchedules] = useState<MedicationSchedule[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const router = useRouter();
+    const isFocused = useIsFocused();
 
     useEffect(() => {
-        fetchSchedules();
-    }, []);
+        if (isFocused) {
+            fetchSchedules();
+        }
+    }, [isFocused]);
 
     const fetchSchedules = async () => {
         setLoading(true);
