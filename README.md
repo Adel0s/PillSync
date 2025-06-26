@@ -51,3 +51,15 @@ In the output, you'll find options to open the app in a:
 - [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+
+## Quick Start with Expo Go
+
+The simplest and easiest way to run PillSync is to:
+
+1. Install [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo (version: SDK 52) on your Android device.  
+2. Run the app server:
+
+   ```bash
+   npx expo start
+3. Scan the QR code displayed in your terminal or browser using the Expo Go app.
+The application will load immediately in the Expo Go sandbox—no additional steps required.
