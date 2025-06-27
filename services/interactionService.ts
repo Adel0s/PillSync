@@ -32,7 +32,7 @@ export async function getDrugDrugInteraction(
         return cache.result;
     }
 
-    // 3) If not in cache, get names
+    // If not in cache, get names
     const { data: meds, error: medsErr } = await supabase
         .from("medication")
         .select("id, name")
@@ -41,13 +41,13 @@ export async function getDrugDrugInteraction(
         console.error("Error fetching medication names:", medsErr);
         return [];
     }
-    // Asigurăm ordinea [a, b]
+    // Ensure the order [a, b]
     const nameMap = Object.fromEntries(meds.map((m) => [m.id, m.name]));
     const orderedNames = [a, b].map((id) => nameMap[id]).filter(Boolean) as string[];
     const namesList = orderedNames.join(" și ");
     console.log(`Meds names: ${namesList}`);
 
-    // 4) build promp
+    // build promp
     const userPrompt = `
 Ești un farmacist. Răspunde STRICT cu un JSON valid, fără niciun alt text.
 Listează toate interacțiunile dintre medicamentele ${namesList}.
@@ -63,7 +63,7 @@ Formatul trebuie să fie:
   `.trim();
     console.log("OpenAI Drug-Drug prompt:", userPrompt);
 
-    // 5) call OpenAI
+    // call OpenAI
     let raw: string;
     try {
         const chat = await openai.chat.completions.create({
@@ -139,7 +139,7 @@ export async function getDrugFoodInteraction(
     const medName = medRow.name;
     console.log(`Med name DF: ${medName}`);
 
-    // 3) build prompt
+    // build prompt
     const userPrompt = `
 Ești farmacist. Răspunde STRICT cu un JSON valid, fără text adițional.
 Care sunt interacțiunile dintre medicamentul "${medName}" și alimentul/băutura "${item}"?
@@ -150,7 +150,7 @@ Format:
   `.trim();
     console.log("DF prompt:", userPrompt);
 
-    // 4) call OpenAI
+    // call OpenAI
     let raw = "";
     try {
         const chat = await openai.chat.completions.create({
@@ -168,7 +168,7 @@ Format:
         return [];
     }
 
-    // 5) parse & cache
+    // parse & cache
     let result: Interaction[] = [];
     try {
         result = JSON.parse(raw);

@@ -93,7 +93,7 @@ export default function Home() {
                 return;
             }
             // console.log(data);
-            // 2) Filtere schedule items to only include those that are active today
+            // Filtere schedule items to only include those that are active today
             // (i.e., start_date <= today <= end_date)
             const today = new Date();
             const filtered = data.filter(schedule => {
@@ -148,7 +148,7 @@ export default function Home() {
             const endOfDay = new Date(startOfDay);
             endOfDay.setDate(endOfDay.getDate() + 1);
 
-            // 4) For each schedule, fetch the latest pill_logs for each time
+            // For each schedule, fetch the latest pill_logs for each time
             type Item = {
                 scheduleId: number;
                 scheduleTimeId: number;
@@ -193,7 +193,7 @@ export default function Home() {
             );
 
             const results = await Promise.all(items);
-            // 5) Add a schedule with no times set -> 'As Needed'
+            // Add a schedule with no times set -> 'As Needed'
             filtered.forEach(schedule => {
                 if (schedule.medication_schedule_times.length === 0) {
                     results.push({
@@ -221,7 +221,7 @@ export default function Home() {
                 if (!b.time) return -1;  // push b after a
                 return a.time.localeCompare(b.time);
             });
-            // 7) Set the state with the results and calculate the total doses and taken doses
+            // Set the state with the results and calculate the total doses and taken doses
             setTodaysSchedules(results);
             setTotalDoses(results.length);
             setDosesTaken(results.filter(item => item.status === "taken").length);
@@ -291,7 +291,6 @@ export default function Home() {
                 </View>
             </View>
 
-            {/* Quick Actions */}
             <View style={styles.quickActionsTitleContainer}>
                 <Text style={styles.quickActionsTitle}>Quick Actions</Text>
             </View>
@@ -334,7 +333,6 @@ export default function Home() {
                 </TouchableOpacity>
             </View>
 
-            {/* Today's Schedule Heading */}
             <View style={styles.scheduleHeaderContainer}>
                 <View style={styles.scheduleHeader}>
                     <View style={styles.scheduleHeaderLeft}>
@@ -395,7 +393,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
         justifyContent: "center",
     },
-    /* Header Bar */
+    // Header Bar
     header: {
         height: 60,
         flexDirection: "row",
@@ -424,7 +422,7 @@ const styles = StyleSheet.create({
         shadowRadius: 2,
         elevation: 2,
     },
-    /* Daily Progress */
+    // Daily Progress
     progressContainer: {
         backgroundColor: COLORS.secondary,
         paddingVertical: 20,
@@ -452,7 +450,7 @@ const styles = StyleSheet.create({
         color: "#fff",
         marginTop: 8,
     },
-    /* Quick Actions */
+    // Quick Actions
     quickActionsTitleContainer: {
         paddingHorizontal: 16,
         marginTop: 20,
@@ -492,7 +490,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
         textAlign: "left",
     },
-    /* Today's Schedule Heading */
+    //Today's Schedule Heading
     scheduleHeaderContainer: {
         paddingHorizontal: 16,
         marginBottom: 8,
@@ -525,7 +523,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginTop: 4,
     },
-    /* Footer */
+    // Footer
     footer: {
         alignItems: "center",
         marginVertical: 10,

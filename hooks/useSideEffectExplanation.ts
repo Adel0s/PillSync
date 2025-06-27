@@ -1,4 +1,3 @@
-// hooks/useSideEffectExplanation.ts
 import { supabase } from "../lib/supabase";
 
 const openai_api_key = process.env.EXPO_PUBLIC_OPENAI_API_KEY as string;

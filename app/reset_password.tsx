@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     View,
     Text,
@@ -12,30 +12,73 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "expo-router";
+import * as Linking from "expo-linking";
 
 const ResetPassword = () => {
     const router = useRouter();
-    const [email, setEmail] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    useEffect(() => {
+        const handleDeepLink = async (eventOrUrl: { url: string } | string) => {
+            const url = typeof eventOrUrl === 'string' ? eventOrUrl : eventOrUrl.url;
+            const { queryParams } = Linking.parse(url);
+
+            // Catch if the link is invalid or expired
+            if (queryParams && queryParams.error) {
+                Alert.alert(
+                    'Expired or invalid link',
+                    decodeURIComponent(
+                        (queryParams.error_description as string) || (queryParams.error as string)
+                    )
+                );
+                return;
+            }
+
+            const {
+                type,
+                access_token,
+                refresh_token
+            } = queryParams as Record<string, string>;
+
+            if (type === 'recovery' && access_token && refresh_token) {
+                const { error: sessionError } = await supabase.auth.setSession({
+                    access_token,
+                    refresh_token,
+                });
+                if (sessionError) {
+                    console.error('Session error:', sessionError);
+                    Alert.alert('Error', 'The session could not be initialized.');
+                }
+            }
+        };
+
+        const sub = Linking.addEventListener('url', handleDeepLink);
+        (async () => {
+            const initialUrl = await Linking.getInitialURL();
+            if (initialUrl) await handleDeepLink(initialUrl);
+        })();
+
+        return () => sub.remove();
+    }, []);
+
     const handleResetPassword = async () => {
-        if (!email || !newPassword) {
-            Alert.alert("Error", "Please fill in both email and new password.");
+        if (!newPassword) {
+            Alert.alert("Error", "Please enter a new password.");
             return;
         }
         setLoading(true);
 
-        // In a typical flow, the user is authenticated via a recovery token
-        // from the reset email. This example assumes the user has a valid session.
-        const { error } = await supabase.auth.updateUser({
+        const { error: updateError } = await supabase.auth.updateUser({
             password: newPassword,
         });
+        setLoading(false);
+        console.log("Update user response:", updateError);
 
-        if (error) {
-            setError(error.message);
-            Alert.alert("Error", error.message);
+        if (updateError) {
+            setError(updateError.message);
+            Alert.alert("Error", updateError.message);
         } else {
             Alert.alert(
                 "Success",
@@ -43,7 +86,6 @@ const ResetPassword = () => {
             );
             router.push("/login");
         }
-        setLoading(false);
     };
 
     return (
@@ -57,15 +99,6 @@ const ResetPassword = () => {
                 <View style={styles.container}>
                     <Text style={styles.header}>Reset Password</Text>
                     <View style={styles.card}>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Email"
-                            placeholderTextColor="#0077b6"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                        />
                         <TextInput
                             style={styles.input}
                             placeholder="New Password"

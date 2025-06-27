@@ -18,7 +18,7 @@ Notifications.setNotificationHandler({
 });
 
 export async function requestPermissionsAndGetPushToken(userId: string) {
-    // 1) Cer permisiuni întâi (inclusiv pentru notificări locale)
+    // Cerem permisiuni întâi (inclusiv pentru notificări locale)
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
     console.log('Notification permissions status:', existing);
@@ -31,7 +31,7 @@ export async function requestPermissionsAndGetPushToken(userId: string) {
         return null; // nici local, nici push nu merg
     }
 
-    // 2) Dacă vrem token push, avem nevoie de device fizic
+    // Dacă vrem token push, avem nevoie de device fizic
     if (!Constants.isDevice || !Device.isDevice) {
         console.log(Device.deviceName, Device.modelName);
         console.warn('Simulator or emulator detected, push notifications not available');
@@ -39,7 +39,7 @@ export async function requestPermissionsAndGetPushToken(userId: string) {
         return null; // dar permisiunea locală e OK
     }
 
-    // 3) Obține token-ul pentru notificări push (dacă e cazul)
+    // Obține token-ul pentru notificări push (dacă e cazul)
     const tokenData = await Notifications.getExpoPushTokenAsync();
     const pushToken = tokenData.data;
 
@@ -108,7 +108,7 @@ export async function scheduleLocalNotificationAtDate(
     });
 }
 
-// 2) Şterge toate notificările programate anterior
+// Şterge toate notificările programate anterior
 export async function cancelAllNotifications() {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -120,7 +120,7 @@ export async function cancelAllNotifications() {
     }
 }
 
-// 3) Programează toate reminderele active din Supabase
+// Programează toate reminderele active din Supabase
 export async function scheduleAllReminders(userId: string) {
     console.log('Scheduling all reminders...');
     await cancelAllNotifications();
@@ -146,7 +146,7 @@ export async function scheduleAllReminders(userId: string) {
         return;
     }
 
-    // 2) filtrare în JS după data de final: start_date + duration_days > now
+    // filtrare în JS după data de final: start_date + duration_days > now
     const active = schedules.filter(s => {
         const start = dayjs(s.start_date);
         const end = start.add(s.duration_days, 'day');

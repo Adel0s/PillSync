@@ -55,7 +55,7 @@ export default function CalendarView() {
         today.getDate()
     ).padStart(2, "0")}`;
 
-    // 1) Load userId on mount
+    // Load userId on mount
     useEffect(() => {
         supabase.auth.getUser().then(({ data }) => {
             if (data.user) setUserId(data.user.id);

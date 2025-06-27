@@ -66,7 +66,7 @@ export default function MedicationScan() {
         }
     };
 
-    // TODO: It works very slow... Should implement later a better solution or debug why is so slow.
+    // TODO: It works very slow...
     const handleUploadPhoto = async () => {
         // Request permission for media library
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -92,7 +92,7 @@ export default function MedicationScan() {
                 console.log("Scanned result:", scannedResult);
                 if (scannedResult && scannedResult.length > 0) {
                     // Note: Scanning from a static image can be slower than live scanning due to additional image processing.
-                    // The returned barcode type might differ (e.g., a numeric value like 32 instead of "ean13")
+                    // The returned barcode type might differ (a numeric value like 32 instead of "ean13")
                     // which is normal based on the underlying implementation.
                     await handleBarCodeScanned(scannedResult[0]);
                 } else {
@@ -170,7 +170,7 @@ export default function MedicationScan() {
                         barcodeScannerSettings={{
                             barcodeTypes: ["qr", "ean13", "ean8"],
                         }}
-                        // TODO: The code is scanned very quiclkly, so I need to add a delay to avoid multiple scans.
+                        // TODO: The code is scanned very quiclkly
                         onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
                     >
                         <View style={styles.overlay}>

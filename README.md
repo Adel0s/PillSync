@@ -1,5 +1,6 @@
 # Welcome to Pill Sync reminder app 👋
 
+Link to repository: https://github.com/Adel0s/PillSync.git
 Pill Sync is a React Native mobile application (built with Expo SDK 52) designed to help patients with chronic conditions manage and adhere to their treatment schedules.  
 **Deliverables:**  
 - Full source code (no compiled binaries)  

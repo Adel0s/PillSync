@@ -1,4 +1,3 @@
-// hooks/useNotifications.ts
 import { useEffect, useState } from 'react';
 import {
     requestPermissionsAndGetPushToken,
@@ -22,7 +21,7 @@ export function useNotifications() {
             },
             response => {
                 console.log('User tapped on notification', response);
-                // aici poți naviga: ex router.push(...)
+                // aici se poate naviga: ex router.push(...)
             }
         );
         return cleanup;

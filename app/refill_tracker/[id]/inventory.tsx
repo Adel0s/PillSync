@@ -17,16 +17,14 @@ import { supabase } from "../../../lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import Header from "../../../components/Header";
 
-// Import the GIF asset (make sure you have a file named inv_image.gif in assets/images)
+// Import the GIF asset
 import InventoryIcon from "../../../assets/images/inventory_animated.gif";
 
 const blurhash = 'L038;[xu00WEIQIRRjxy9DRf%Qxx'
 
-// Assuming medication_schedule has reminder_enabled and reminder_threshold
 interface Medication {
     id: number;
     name: string | null;
-    // ... other fields
 }
 
 interface MedicationSchedule {

@@ -35,7 +35,7 @@ export default function MedicationDetails() {
         if (id) fetchDetail(+id);
     }, [id]);
 
-    // 2) Pull in medication_schedule_times
+    // Pull in medication_schedule_times
     async function fetchDetail(scheduleId: number) {
         setLoading(true);
         const { data, error } = await supabase
@@ -98,7 +98,7 @@ export default function MedicationDetails() {
         );
     }
 
-    // 3) Compute schedule display
+    // Compute schedule display
     const times = detail.medication_schedule_times
         ?.map((t) => t.time)
         .sort() ?? []; // they come as "HH:MM:SS"
@@ -202,7 +202,7 @@ export default function MedicationDetails() {
                     )}
                 </TouchableOpacity>
 
-                {/* REMINDER SETTINGS — now tappable */}
+                {/* REMINDER SETTINGS */}
                 <TouchableOpacity style={styles.card} onPress={toggleReminders}>
                     <View style={styles.cardRowLeft}>
                         <Ionicons

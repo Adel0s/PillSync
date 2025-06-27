@@ -177,11 +177,11 @@ export default function SchedulePillList() {
     async function handleConvertToAsNeeded() {
         setLoading(true);
 
-        // 1) șterge toate reminderele existente
+        // delete all existing reminders
         await Promise.all(times.map(t => deleteScheduleTime(t.id)));
         setTimes([]);
 
-        // 2) setează modul As-needed
+        // set As-needed state
         const { error } = await setAsNeeded(scheduleId);
         if (error) {
             console.error(error);

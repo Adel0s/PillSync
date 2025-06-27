@@ -1,4 +1,3 @@
-// app/(profile)/change-password.tsx
 import React, { useState } from "react";
 import {
     SafeAreaView,

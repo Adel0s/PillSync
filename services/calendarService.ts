@@ -23,10 +23,10 @@ export interface CalendarData {
     timesById: Record<number, string>;
     timeToSchedule: Record<number, number>;
     scheduleNamesById: Record<number, string>;
-    scheduleTimesByDay: Record<string, number[]>;   // ← added
+    scheduleTimesByDay: Record<string, number[]>;
 }
 
-/** Fetch data for a single month */
+// Fetch data for a single month
 export async function fetchCalendarData(
     userId: string,
     year: number,
@@ -73,7 +73,7 @@ export async function fetchCalendarData(
     });
     const scheduleTimeIds = timesList.map(t => t.id);
 
-    // 4) Pill-logs for month
+    // Pill-logs for month
     const { data: logsData, error: lErr } = await supabase
         .from("pill_logs")
         .select("id, schedule_id, schedule_time_id, taken_at, status, note")
@@ -84,7 +84,7 @@ export async function fetchCalendarData(
     if (lErr) throw lErr;
     const logsList: PillLog[] = logsData ?? [];
 
-    // 5) Group logs by day
+    // Group logs by day
     const logsByDay: Record<string, PillLog[]> = {};
     logsList.forEach(l => {
         const day = l.taken_at.substr(0, 10);
@@ -92,7 +92,7 @@ export async function fetchCalendarData(
         logsByDay[day].push(l);
     });
 
-    // 6) Create an object to hold the planned doses for each day
+    // Create an object to hold the planned doses for each day
     const dailyPlanned: Record<string, number> = {};
     for (let d = new Date(startDateObj); d <= endDateObj; d.setDate(d.getDate() + 1)) {
         dailyPlanned[d.toISOString().substr(0, 10)] = 0;
@@ -113,7 +113,7 @@ export async function fetchCalendarData(
         }
     });
 
-    // 7) Create an object to hold stats for each day based on dailyPlanned and logsByDay
+    // Create an object to hold stats for each day based on dailyPlanned and logsByDay
     const statsByDay: Record<string, DayStats> = {};
     Object.entries(dailyPlanned).forEach(([day, planned]) => {
         const logs = logsByDay[day] || [];
@@ -171,64 +171,4 @@ export async function fetchCalendarData(
         scheduleNamesById,
         scheduleTimesByDay
     };
-}
-
-
-/** Fetch data for a full year (heatmap) */
-export type YearlyStats = Record<string, DayStats>;
-
-export async function fetchYearlyCalendarData(
-    userId: string,
-    startISO: string, // ex. '2024-05-01T00:00:00Z'
-    endISO: string    // ex. '2025-04-30T23:59:59Z'
-): Promise<YearlyStats> {
-    // active schedules
-    const { data: sch, error: schErr } = await supabase
-        .from("medication_schedule")
-        .select("id")
-        .eq("patient_id", userId)
-        .eq("status", "active");
-    if (schErr) throw schErr;
-    const scheduleIds = (sch ?? []).map((s: any) => s.id);
-    if (scheduleIds.length === 0) return {};
-
-    // planned times for the schedules
-    const { data: times } = await supabase
-        .from("medication_schedule_times")
-        .select("id")
-        .in("schedule_id", scheduleIds);
-    const scheduleTimeIds = (times ?? []).map((t: any) => t.id);
-    const totalPerDay = scheduleTimeIds.length;
-
-    // pill_logs for the schedules in the given time range
-    const { data: logs, error: lErr } = await supabase
-        .from("pill_logs")
-        .select("schedule_time_id, status, taken_at")
-        .in("schedule_time_id", scheduleTimeIds)
-        .gte("taken_at", startISO)
-        .lte("taken_at", endISO);
-    if (lErr) throw lErr;
-
-    // grouped logs by day
-    const grouped: Record<string, any[]> = {};
-    (logs ?? []).forEach((l: any) => {
-        const day = l.taken_at.substr(0, 10);
-        if (!grouped[day]) grouped[day] = [];
-        grouped[day].push(l);
-    });
-
-    // calculate stats for each day in the range
-    const stats: YearlyStats = {};
-    const start = new Date(startISO), end = new Date(endISO);
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const key = d.toISOString().substr(0, 10);
-        const dayLogs = grouped[key] ?? [];
-        const taken = dayLogs.filter(l => l.status === "taken").length;
-        const skipped = dayLogs.filter(l => l.status === "skipped").length;
-        const snoozed = dayLogs.filter(l => l.status === "snoozed").length;
-        const unknown = totalPerDay - taken - skipped;
-        stats[key] = { totalPlanned: totalPerDay, taken, skipped, snoozed, unknown };
-    }
-
-    return stats;
 }

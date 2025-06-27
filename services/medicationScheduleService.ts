@@ -1,4 +1,3 @@
-// services/medicationScheduleService.ts
 import { supabase } from "../lib/supabase";
 
 export interface ScheduleTime {
@@ -18,7 +17,7 @@ export interface MedicationScheduleDetails {
     medication_schedule_times: ScheduleTime[];
 }
 
-// 1) Fetch the full schedule + times
+// Fetch the full schedule + times
 export async function fetchScheduleDetails(scheduleId: number) {
     const { data, error } = await supabase
         .from("medication_schedule")
@@ -42,7 +41,7 @@ export async function fetchScheduleDetails(scheduleId: number) {
     };
 }
 
-// 2) Toggle reminders on/off
+// Toggle reminders on/off
 export async function toggleReminders(scheduleId: number, enabled: boolean) {
     const { error } = await supabase
         .from("medication_schedule")
@@ -52,7 +51,7 @@ export async function toggleReminders(scheduleId: number, enabled: boolean) {
     return { error };
 }
 
-// 3) Hard‐delete a schedule
+// Hard‐delete a schedule
 export async function deleteSchedule(scheduleId: number) {
     const { error } = await supabase
         .from("medication_schedule")
@@ -62,9 +61,9 @@ export async function deleteSchedule(scheduleId: number) {
     return { error };
 }
 
-// 4) Add a new reminder time (returns the inserted row)
+// Add a new reminder time (returns the inserted row)
 export async function addScheduleTime(scheduleId: number, time: string) {
-    // 1) fetch one existing offset (they’re all the same)
+    // fetch one existing offset (they’re all the same)
     const { data: existing, error: fetchErr } = await supabase
         .from("medication_schedule_times")
         .select("notification_offset")
@@ -77,7 +76,7 @@ export async function addScheduleTime(scheduleId: number, time: string) {
             ? 5
             : existing.notification_offset;
 
-    // 2) insert the new time with the same offset
+    // insert the new time with the same offset
     const { data, error } = await supabase
         .from("medication_schedule_times")
         .insert({ schedule_id: scheduleId, time, notification_offset: offset })
@@ -90,7 +89,7 @@ export async function addScheduleTime(scheduleId: number, time: string) {
     };
 }
 
-// 5) Update an existing reminder time
+// Update an existing reminder time
 export async function updateScheduleTime(timeId: number, time: string) {
     const { error } = await supabase
         .from("medication_schedule_times")
@@ -100,7 +99,7 @@ export async function updateScheduleTime(timeId: number, time: string) {
     return { error };
 }
 
-// 6) Delete one reminder time
+// Delete one reminder time
 export async function deleteScheduleTime(timeId: number) {
     const { error } = await supabase
         .from("medication_schedule_times")
@@ -110,7 +109,7 @@ export async function deleteScheduleTime(timeId: number) {
     return { error };
 }
 
-// 7) Switch to as_needed
+// Switch to as_needed
 export async function setAsNeeded(scheduleId: number) {
     const { error } = await supabase
         .from("medication_schedule")
@@ -120,7 +119,7 @@ export async function setAsNeeded(scheduleId: number) {
     return { error };
 }
 
-// 8) Switch to not as_needed
+// Switch to not as_needed
 export async function unsetAsNeeded(scheduleId: number) {
     const { error } = await supabase
         .from("medication_schedule")
